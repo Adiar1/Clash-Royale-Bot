@@ -17,7 +17,7 @@ from commands.info import handle_info_command
 from commands.nicklink import handle_nicklink_command
 from commands.reminders import handle_reminders_command
 from commands.viewnicks import handle_viewnicks_command
-from commands.rankings import handle_rankings_command  # New import
+from commands.rankings import handle_rankings_command
 from commands.wipelinks import handle_wipelinks_command
 from utils.database import init_db
 
