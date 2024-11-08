@@ -1,6 +1,6 @@
 import discord
 from discord import Interaction, Embed
-from utils.database import get_all_clan_links
+from utils.helpers import get_all_clan_links
 from utils.api import get_current_clan_members
 
 

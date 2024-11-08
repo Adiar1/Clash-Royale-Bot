@@ -5,8 +5,8 @@ import csv
 import io
 import asyncio
 from utils.api import get_current_clan_members, get_role, is_new_player, get_former_clan_members, is_real_clan_tag
-from utils.database import get_clan_tag_by_nickname
-from utils.helpers import NEW_MEMBER_EMOJI
+from utils.helpers import NEW_MEMBER_EMOJI, get_clan_tag_by_nickname
+
 
 class SelectListingOrder(Select):
     OPTIONS = [

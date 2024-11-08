@@ -1,5 +1,6 @@
 from discord import Interaction, User
-from utils.database import link_player_tag, get_all_player_tags
+from utils.helpers import get_all_player_tags, link_player_tag
+
 
 async def handle_forcelink_command(interaction: Interaction, target_user: User, player_tag: str, alt_account: bool):
     if player_tag.startswith('#'):

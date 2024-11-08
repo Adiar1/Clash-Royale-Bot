@@ -1,7 +1,7 @@
 import requests
 from discord import Interaction
-from utils.helpers import CLASH_ROYALE_API_BASE_URL, CLASH_ROYALE_API_KEY
-from utils.database import link_player_tag, get_all_player_tags
+from utils.helpers import CLASH_ROYALE_API_BASE_URL, CLASH_ROYALE_API_KEY, get_all_player_tags, link_player_tag
+
 
 async def handle_link_command(interaction: Interaction, player_tag: str, alt_account: bool):
     if player_tag.startswith('#'):

@@ -1,5 +1,5 @@
 from discord import Interaction, Embed, Client, app_commands
-from utils.database import link_clan_tag, get_clan_nickname
+from utils.helpers import get_clan_nickname, link_clan_tag
 from utils.api import get_current_clan_members
 import asyncio
 import logging

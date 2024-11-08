@@ -1,6 +1,9 @@
 import os
+import sqlite3
 from typing import Final
 from dotenv import load_dotenv
+
+from utils.database import DATABASE_NAME, logger
 
 load_dotenv()
 
@@ -84,3 +87,213 @@ LEVEL_EMOJIS = {
     63: "<:experience63:1259932601578422293>",
     64: "<:experience64:1259932650630545418>",
 }
+
+
+def get_discord_id_from_tag(player_tag):
+    try:
+        # Strip '#' and capitalize the tag
+        formatted_tag = player_tag.lstrip('#').upper()
+
+        conn = sqlite3.connect(DATABASE_NAME)
+        c = conn.cursor()
+        c.execute(
+            'SELECT discord_id FROM user_links WHERE player_tags = ? OR player_tags LIKE ? OR player_tags LIKE ? OR player_tags LIKE ?',
+            (formatted_tag, f'{formatted_tag},%', f'%,{formatted_tag},%', f'%,{formatted_tag}')
+        )
+        result = c.fetchone()
+        conn.close()
+        if result:
+            return result[0]
+        else:
+            return None
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
+        return None
+
+
+def get_clan_tag_by_nickname(nickname, guild_id):
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        c = conn.cursor()
+        c.execute('SELECT clan_tag FROM clan_links WHERE nickname = ? AND guild_id = ?', (nickname, guild_id))
+        result = c.fetchone()
+        conn.close()
+        if result:
+            return result[0]
+        return None
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
+        return None
+
+
+def get_all_clan_links():
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        c = conn.cursor()
+        c.execute('SELECT clan_tag, guild_id, nickname FROM clan_links')
+        results = c.fetchall()
+        conn.close()
+        return results
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
+        return []
+
+
+def get_privileged_roles(guild_id):
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        c = conn.cursor()
+        c.execute('SELECT role_ids FROM privileged_roles WHERE guild_id = ?', (guild_id,))
+        result = c.fetchone()
+        conn.close()
+        if result:
+            return result[0].split(',')
+        return []
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
+        return []
+
+
+def add_privileged_roles(guild_id, role_ids):
+    try:
+        # Filter any empty strings or None values from the list
+        role_ids = list(filter(None, role_ids))
+
+        # Join the role IDs into a single comma-separated string
+        role_ids_str = ','.join(role_ids)
+
+        conn = sqlite3.connect(DATABASE_NAME)
+        c = conn.cursor()
+        c.execute('INSERT OR REPLACE INTO privileged_roles (guild_id, role_ids) VALUES (?, ?)',
+                  (guild_id, role_ids_str))
+        conn.commit()
+        conn.close()
+        return True
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
+        return False
+
+
+def update_player_tags(discord_id, new_tags):
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        c = conn.cursor()
+        c.execute('UPDATE user_links SET player_tags = ? WHERE discord_id = ?', (new_tags, discord_id))
+        conn.commit()
+        conn.close()
+        return True
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
+        return False
+
+
+def delete_clan_tag(clan_tag, guild_id):
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        c = conn.cursor()
+        c.execute('DELETE FROM clan_links WHERE clan_tag = ? AND guild_id = ?', (clan_tag, guild_id))
+        conn.commit()
+        conn.close()
+        return True
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
+        return False
+
+
+def get_clan_nickname(clan_tag, guild_id):
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        c = conn.cursor()
+        c.execute('SELECT nickname FROM clan_links WHERE clan_tag = ? AND guild_id = ?', (clan_tag, guild_id))
+        result = c.fetchone()
+        conn.close()
+        if result:
+            return result[0]
+        return None
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
+        return None
+
+
+def link_clan_tag(clan_tag, guild_id, nickname):
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        c = conn.cursor()
+        c.execute('INSERT OR REPLACE INTO clan_links (clan_tag, guild_id, nickname) VALUES (?, ?, ?)', (clan_tag, guild_id, nickname))
+        conn.commit()
+        conn.close()
+        return "linked"
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
+        return None
+
+
+def delete_all_player_tags(discord_id):
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        c = conn.cursor()
+        c.execute('DELETE FROM user_links WHERE discord_id = ?', (discord_id,))
+        conn.commit()
+        conn.close()
+        return True
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
+        return False
+
+
+def get_all_player_tags(discord_id):
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        c = conn.cursor()
+        c.execute('SELECT player_tags FROM user_links WHERE discord_id = ?', (discord_id,))
+        result = c.fetchone()
+        conn.close()
+        if result:
+            return result[0].split(',')
+        return []
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
+        return []
+
+
+def link_player_tag(discord_id, player_tag, alt=False):
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        c = conn.cursor()
+
+        c.execute('SELECT player_tags FROM user_links WHERE discord_id = ?', (discord_id,))
+        result = c.fetchone()
+
+        if result:
+            existing_tags = result[0].split(',')
+            if alt:
+                if player_tag not in existing_tags:
+                    existing_tags.append(player_tag)
+                    c.execute('UPDATE user_links SET player_tags = ? WHERE discord_id = ?', (','.join(existing_tags), discord_id))
+                    conn.commit()
+                    conn.close()
+                    return "linked"
+                else:
+                    conn.close()
+                    return "exists"
+            else:
+                existing_tags[0] = player_tag
+                c.execute('UPDATE user_links SET player_tags = ? WHERE discord_id = ?', (','.join(existing_tags), discord_id))
+                conn.commit()
+                conn.close()
+                return "updated"
+        else:
+            c.execute('INSERT INTO user_links (discord_id, player_tags) VALUES (?, ?)', (discord_id, player_tag))
+            conn.commit()
+            conn.close()
+            return "linked"
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
+        return None
+
+async def is_privileged(interaction):
+    guild_id = str(interaction.guild.id)
+    user_roles = [role.id for role in interaction.user.roles]
+    privileged_roles = get_privileged_roles(guild_id)
+    return any(str(role_id) in privileged_roles for role_id in user_roles)
+

@@ -1,6 +1,6 @@
 from discord import Interaction, User, SelectOption
 from discord.ui import View, Select
-from utils.database import get_all_player_tags, update_player_tags
+
 
 class TagSelect(Select):
     def __init__(self, user_id, current_tags):
@@ -24,7 +24,9 @@ class TagSelectView(View):
         super().__init__()
         self.add_item(TagSelect(user_id, current_tags))
 
-from utils.database import get_privileged_roles
+
+from utils.helpers import get_privileged_roles, update_player_tags, get_all_player_tags
+
 
 async def handle_wipelinks_command(interaction: Interaction, someone_else: User = None):
     privileged_roles = get_privileged_roles(interaction.guild.id)

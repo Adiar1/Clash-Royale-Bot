@@ -301,19 +301,13 @@ async def nth_war_log(clan_tag: str, n: int):
 
     headers = {"Authorization": f"Bearer {CLASH_ROYALE_API_KEY}"}
     async with aiohttp.ClientSession() as session:
-        async with session.get(f"{CLASH_ROYALE_API_BASE_URL}/clans/{clan_tag}/riverracelog?limit={n}",
+        async with session.get(f"{CLASH_ROYALE_API_BASE_URL}/clans/%23{clan_tag}/riverracelog?limit={n}",
                                headers=headers) as response:
             if response.status == 200:
                 data = await response.json()
                 if "items" in data and data["items"]:
                     # Find the entry with the smallest seasonId and sectionIndex
                     min_entry = min(data["items"], key=lambda x: (x["seasonId"], x["sectionIndex"]))
-                    correct_seasonId = min_entry["seasonId"]
-                    correct_sectionIndex = min_entry["sectionIndex"]
-
-                    print(
-                        f"{clan_tag} {n} wars ago is seasonId:{correct_seasonId} sectionIndex: {correct_sectionIndex}")
-
                     result = ("riverracelog", min_entry)
                     set_cache(cache_key, result)
                     return result
@@ -321,6 +315,62 @@ async def nth_war_log(clan_tag: str, n: int):
         set_cache(cache_key, (None, None))
         return None, None
 
+
+
+async def get_fame_n_wars_ago(clan_tag: str, player_tag: str, n: int) -> str:
+    cache_key = f"fame_{n}_wars_ago_{clan_tag}_{player_tag}"
+    cached_data = get_cache(cache_key)
+    if cached_data:
+        return cached_data
+
+    player_tag = sanitize_tag(player_tag)
+    fame = '0'
+
+    log_type, log_data = await nth_war_log(clan_tag, n)
+    if log_data is None:
+        set_cache(cache_key, fame)
+        return fame
+
+    # Log data structure is different, so adjust code accordingly
+    standings = log_data.get('standings', [])
+    for standing in standings:
+        clan = standing.get('clan', {})
+        participants = clan.get('participants', [])
+        for player in participants:
+            if player.get('tag') == player_tag:
+                fame = str(player.get('fame', '0'))
+                set_cache(cache_key, fame)
+                return fame
+
+    set_cache(cache_key, fame)
+    return fame
+
+async def get_decks_used_n_wars_ago(clan_tag: str, player_tag: str, n: int) -> int:
+    cache_key = f"decks_used_{n}_wars_ago_{clan_tag}_{player_tag}"
+    cached_data = get_cache(cache_key)
+    if cached_data:
+        return int(cached_data)
+
+    player_tag = sanitize_tag(player_tag)
+    decks_used = 0
+
+    log_type, log_data = await nth_war_log(clan_tag, n)
+    if log_data is None:
+        set_cache(cache_key, decks_used)
+        return decks_used
+
+    standings = log_data.get('standings', [])
+    for standing in standings:
+        clan = standing.get('clan', {})
+        participants = clan.get('participants', [])
+        for player in participants:
+            if player.get('tag') == player_tag:
+                decks_used = player.get('decksUsed', 0)
+                set_cache(cache_key, decks_used)
+                return decks_used
+
+    set_cache(cache_key, decks_used)
+    return decks_used
 
 async def current_war_log(clan_tag: str):
     cache_key = f"current_war_log_{clan_tag}"
@@ -330,7 +380,7 @@ async def current_war_log(clan_tag: str):
 
     headers = {"Authorization": f"Bearer {CLASH_ROYALE_API_KEY}"}
     async with aiohttp.ClientSession() as session:
-        async with session.get(f"{CLASH_ROYALE_API_BASE_URL}/clans/{clan_tag}/currentriverrace",
+        async with session.get(f"{CLASH_ROYALE_API_BASE_URL}/clans/%23{clan_tag}/currentriverrace",
                                headers=headers) as response:
             if response.status == 200:
                 result = ("currentriverrace", await response.json())

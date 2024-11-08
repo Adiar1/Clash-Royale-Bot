@@ -5,8 +5,10 @@ from discord.ui import View, Select, Button
 import aiohttp
 import csv
 import io
-from utils.api import get_current_clan_members, get_former_clan_members, is_new_player, get_last_fame, \
-    get_last_decks_used, is_real_clan_tag
+
+from commands.lastwar import excel_like_sort_key
+from utils.api import get_current_clan_members, get_former_clan_members, is_new_player, get_fame_n_wars_ago, \
+    get_decks_used_n_wars_ago, is_real_clan_tag
 from utils.helpers import FAME_EMOJI, NEW_MEMBER_EMOJI, MULTIDECK_EMOJI, FORMER_MEMBER_EMOJI, get_clan_tag_by_nickname
 
 
@@ -32,7 +34,7 @@ class SelectDataOrder(Select):
         await self.handle_command(
             interaction.client,
             interaction,
-            f"/{self.command_type} {clan_tag}",
+            f"/{self.command_type} {clan_tag} {self._view.n}",
             arrange_listing_order=self._view.arrange_listing_order,
             arrange_data_order=self._view.arrange_data_order
         )
@@ -61,7 +63,7 @@ class SelectListingOrder(Select):
         await self.handle_command(
             interaction.client,
             interaction,
-            f"/{self.command_type} {clan_tag}",
+            f"/{self.command_type} {clan_tag} {self._view.n}",
             arrange_listing_order=self._view.arrange_listing_order,
             arrange_data_order=self._view.arrange_data_order
         )
@@ -99,11 +101,12 @@ class DownloadCSVButton(Button):
         else:
             return ""
 
-async def handle_lastwar_command(bot, interaction: Interaction, user_message: str,
-                                 arrange_listing_order: str = "tag_asc",
-                                 arrange_data_order: str = "fame_name_decks") -> None:
+async def handle_nthwar_command(bot, interaction: Interaction, user_message: str,
+                                arrange_listing_order: str = "tag_asc",
+                                arrange_data_order: str = "fame_name_decks") -> None:
     parts = user_message.split()
     input_value = parts[1].lstrip('#')
+    n = int(parts[2])
 
     if len(input_value) < 5:
         clan_tag = get_clan_tag_by_nickname(input_value, interaction.guild.id)
@@ -123,8 +126,10 @@ async def handle_lastwar_command(bot, interaction: Interaction, user_message: st
         timeout = 15
         try:
             embed, members_with_info, order = await asyncio.wait_for(
-                format_clan_members_embed(clan_tag, arrange_listing_order, arrange_data_order, get_last_fame,
-                                          get_last_decks_used),
+                format_clan_members_embed(clan_tag, arrange_listing_order, arrange_data_order,
+                                          lambda ct, pt: get_fame_n_wars_ago(ct, pt, n),
+                                          lambda ct, pt: get_decks_used_n_wars_ago(ct, pt, n),
+                                          n),
                 timeout=timeout
             )
         except asyncio.TimeoutError:
@@ -134,22 +139,20 @@ async def handle_lastwar_command(bot, interaction: Interaction, user_message: st
         view = View()
         view.arrange_listing_order = arrange_listing_order
         view.arrange_data_order = arrange_data_order
-        view.add_item(SelectListingOrder("lastwar", handle_lastwar_command, view))
-        view.add_item(SelectDataOrder("lastwar", handle_lastwar_command, view))
+        view.n = n
+        view.add_item(SelectListingOrder("nthwar", handle_nthwar_command, view))
+        view.add_item(SelectDataOrder("nthwar", handle_nthwar_command, view))
         view.add_item(DownloadCSVButton(members_with_info, order))
 
         await interaction.edit_original_response(embed=embed, view=view)
 
     except Exception as e:
-        print(f"Error handling lastwar command: {e}")
+        print(f"Error handling nthwar command: {e}")
         await interaction.response.send_message("An error occurred while processing your request.")
 
-def excel_like_sort_key(s):
-    # Normalize to handle special characters and case insensitivity
-    return ''.join(f"{ord(c):04}" for c in s.strip().lower())
 
 async def format_clan_members_embed(clan_tag: str, arrange_listing_order: str, arrange_data_order: str, fame_func,
-                                    decks_func) -> (Embed, list, list):
+                                    decks_func, n: int) -> (Embed, list, list):
     active_clan_name, active_members = await get_current_clan_members(clan_tag)
     former_members = await get_former_clan_members(clan_tag)
     members = active_members + former_members
@@ -162,29 +165,25 @@ async def format_clan_members_embed(clan_tag: str, arrange_listing_order: str, a
             new_status = await is_new_player(clan_tag, tag)
             is_former = (tag, name) in former_members
 
-            # Exclude members who used 0 decks and are former members
             if not (decks_used == 0 and is_former):
                 members_with_info.append((tag, name, fame, decks_used, new_status, is_former))
 
-    # Sorting logic based on arrange_listing_order value
-    if arrange_listing_order == "decks_asc":
-        members_with_info.sort(key=lambda x: x[3])
-    elif arrange_listing_order == "decks_desc":
-        members_with_info.sort(key=lambda x: x[3], reverse=True)
-    elif arrange_listing_order == "name_asc":
-        members_with_info.sort(key=lambda x: excel_like_sort_key(x[1]))
-    elif arrange_listing_order == "name_desc":
-        members_with_info.sort(key=lambda x: excel_like_sort_key(x[1]), reverse=True)
-    elif arrange_listing_order == "fame_asc":
-        members_with_info.sort(key=lambda x: int(x[2]))
-    elif arrange_listing_order == "fame_desc":
-        members_with_info.sort(key=lambda x: int(x[2]), reverse=True)
-    elif arrange_listing_order == "tag_asc":
-        members_with_info.sort(key=lambda x: excel_like_sort_key(x[0]))
-    elif arrange_listing_order == "tag_desc":
-        members_with_info.sort(key=lambda x: excel_like_sort_key(x[0]), reverse=True)
+    # Sorting logic
+    sorting_key = {
+        "decks_asc": lambda x: x[3],
+        "decks_desc": lambda x: x[3],
+        "name_asc": lambda x: excel_like_sort_key(x[1]),
+        "name_desc": lambda x: excel_like_sort_key(x[1]),
+        "fame_asc": lambda x: int(x[2]),
+        "fame_desc": lambda x: int(x[2]),
+        "tag_asc": lambda x: excel_like_sort_key(x[0]),
+        "tag_desc": lambda x: excel_like_sort_key(x[0]),
+    }
 
-    # Data ordering logic
+    reverse_order = arrange_listing_order.endswith("desc")
+    members_with_info.sort(key=sorting_key[arrange_listing_order], reverse=reverse_order)
+
+    # Format the data
     def format_member_line(tag, name, fame, decks_used, new_status, is_former, order):
         formatted_line = []
         for key in order:
@@ -197,20 +196,15 @@ async def format_clan_members_embed(clan_tag: str, arrange_listing_order: str, a
                     f"`{name}`{FORMER_MEMBER_EMOJI if is_former else ''}{' ' + NEW_MEMBER_EMOJI if new_status else ''}")
         return " - ".join(formatted_line)
 
-    if arrange_data_order == "fame_name_decks":
-        order = ["fame", "name", "decks"]
-    elif arrange_data_order == "fame_decks_name":
-        order = ["fame", "decks", "name"]
-    elif arrange_data_order == "name_fame_decks":
-        order = ["name", "fame", "decks"]
-    elif arrange_data_order == "name_decks_fame":
-        order = ["name", "decks", "fame"]
-    elif arrange_data_order == "decks_fame_name":
-        order = ["decks", "fame", "name"]
-    elif arrange_data_order == "decks_name_fame":
-        order = ["decks", "name", "fame"]
-    else:
-        order = ["fame", "name", "decks"]
+    order_map = {
+        "fame_name_decks": ["fame", "name", "decks"],
+        "fame_decks_name": ["fame", "decks", "name"],
+        "name_fame_decks": ["name", "fame", "decks"],
+        "name_decks_fame": ["name", "decks", "fame"],
+        "decks_fame_name": ["decks", "fame", "name"],
+        "decks_name_fame": ["decks", "name", "fame"],
+    }
+    order = order_map.get(arrange_data_order, ["fame", "name", "decks"])
 
     member_lines = [
         format_member_line(tag, name, fame, decks_used, new_status, is_former, order)
@@ -221,10 +215,19 @@ async def format_clan_members_embed(clan_tag: str, arrange_listing_order: str, a
         FAME_EMOJI if key == "fame" else MULTIDECK_EMOJI if key == "decks" else "Player"
         for key in order
     )
-    embed = Embed(title=f"Fame Earned and Decks Used in Last War by Members of {active_clan_name} #{clan_tag}",
+
+    # Create Embed
+    embed = Embed(title=f"Fame Earned and Decks Used {n} Wars Ago by Members of {active_clan_name} #{clan_tag}",
                   color=0x1E133E)
-    embed.description = "\n".join([header] + member_lines)
+    description = "\n".join([header] + member_lines)
+
+    # Truncate description if necessary
+    if len(description) > 4096:
+        description = description[:4093] + "..."
+
+    embed.description = description
     embed.set_footer(
         text=f"{FORMER_MEMBER_EMOJI} Indicates a former member \n{NEW_MEMBER_EMOJI} Indicates a member who joined after"
              f" last war ended")
+
     return embed, members_with_info, order

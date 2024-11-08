@@ -1,7 +1,6 @@
 import discord
 from discord import Interaction, User, ButtonStyle
 from discord.ui import Button, View, Select
-from utils.database import get_all_player_tags
 from utils.api import (
     get_player_info,
     get_player_clan_info,
@@ -10,7 +9,8 @@ from utils.api import (
 )
 import asyncio
 from commands.player import handle_player_command
-from utils.helpers import EMOJI_TROPHYROAD
+from utils.helpers import EMOJI_TROPHYROAD, get_all_player_tags
+
 
 async def handle_viewlinks_command(interaction: Interaction, someone_else: User = None):
     await interaction.response.defer()
