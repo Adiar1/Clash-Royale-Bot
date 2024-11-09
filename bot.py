@@ -7,7 +7,6 @@ from discord import Intents, app_commands, User, TextChannel
 from discord.ext import commands
 
 from commands.average import handle_average_command
-from commands.clanaverage import handle_clan_average_command
 from commands.editperms import handle_editperms_command
 from commands.forcelink import handle_forcelink_command
 from commands.nthwar import handle_nthwar_command
@@ -53,10 +52,10 @@ async def lastwar(interaction, clan_tag: str):
     await handle_lastwar_command(bot, interaction, f"/lastwar {clan_tag}")
 
 @bot.tree.command(name="nthwar", description="Get information about how current members of a clan performed n wars ago")
-@app_commands.describe(clan_tag="The tag of the clan", n="Number of wars ago (1-9)")
+@app_commands.describe(clan_tag="The tag of the clan", n="Number of wars ago (1-10)")
 async def nthwar(interaction, clan_tag: str, n: int):
-    if not 1 <= n <= 9:
-        await interaction.response.send_message("The war number must be between 1 and 9.", ephemeral=True)
+    if not 1 <= n <= 10:
+        await interaction.response.send_message("The war number must be between 1 and 10.", ephemeral=True)
         return
     await handle_nthwar_command(bot, interaction, f"/nthwar {clan_tag} {n}")
 
@@ -179,45 +178,12 @@ async def viewperms(interaction):
 @bot.tree.command(name="average", description="Calculate average fame over a range of wars")
 @app_commands.describe(
     player_tag="The tag of the player",
-    from_war="Starting from how many weeks ago (1-9)",
-    to_war="Ending at how many weeks ago (1-9)"
+    from_war="Starting from how many weeks ago (1-10)",
+    to_war="Ending at how many weeks ago (1-10)"
 )
 async def average(interaction, player_tag: str, from_war: int, to_war: int):
-    if not 1 <= from_war <= 9:
-        await interaction.response.send_message("The starting war number must be between 1 and 9.", ephemeral=True)
-        return
-
-    if not 1 <= to_war <= 9:
-        await interaction.response.send_message("The ending war number must be between 1 and 9.", ephemeral=True)
-        return
-
-    if from_war < to_war:
-        await interaction.response.send_message("The 'from' must be greater than or equal to the 'to'", ephemeral=True)
-        return
-
     await handle_average_command(interaction, player_tag, from_war, to_war)
 
-
-@bot.tree.command(name="clanaverage", description="Analyze clan performance metrics over a range of wars")
-@app_commands.describe(
-    clan_tag="The tag of the clan",
-    from_war="Starting from how many wars ago (1-9)",
-    to_war="Ending at how many wars ago (1-9)"
-)
-async def clanaverage(interaction, clan_tag: str, from_war: int, to_war: int):
-    if not 1 <= from_war <= 9:
-        await interaction.response.send_message("The starting war number must be between 1 and 9.", ephemeral=True)
-        return
-
-    if not 1 <= to_war <= 9:
-        await interaction.response.send_message("The ending war number must be between 1 and 9.", ephemeral=True)
-        return
-
-    if from_war < to_war:
-        await interaction.response.send_message("The 'from' must be greater than or equal to the 'to'", ephemeral=True)
-        return
-
-    await handle_clan_average_command(interaction, clan_tag, from_war, to_war)
 
 def main():
     load_dotenv()

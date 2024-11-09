@@ -12,6 +12,26 @@ from utils.api import get_current_clan_members, get_former_clan_members, is_new_
 from utils.helpers import FAME_EMOJI, NEW_MEMBER_EMOJI, MULTIDECK_EMOJI, FORMER_MEMBER_EMOJI, get_clan_tag_by_nickname
 
 
+class SelectN(Select):
+    def __init__(self, command_type, handle_command, view):
+        options = [SelectOption(label=f"{i} Wars Ago", value=str(i)) for i in range(1, 11)]
+        super().__init__(placeholder="Select War Number", options=options)
+        self.command_type = command_type
+        self.handle_command = handle_command
+        self._view = view
+
+    async def callback(self, interaction):
+        clan_tag = interaction.message.embeds[0].title.split('#')[1]
+        self._view.n = int(self.values[0])
+        await self.handle_command(
+            interaction.client,
+            interaction,
+            f"/{self.command_type} {clan_tag} {self._view.n}",
+            arrange_listing_order=self._view.arrange_listing_order,
+            arrange_data_order=self._view.arrange_data_order
+        )
+
+
 class SelectDataOrder(Select):
     OPTIONS = [
         SelectOption(label="Order: [Fame - Name - Decks]", value="fame_name_decks"),
@@ -38,6 +58,7 @@ class SelectDataOrder(Select):
             arrange_listing_order=self._view.arrange_listing_order,
             arrange_data_order=self._view.arrange_data_order
         )
+
 
 class SelectListingOrder(Select):
     OPTIONS = [
@@ -67,6 +88,7 @@ class SelectListingOrder(Select):
             arrange_listing_order=self._view.arrange_listing_order,
             arrange_data_order=self._view.arrange_data_order
         )
+
 
 class DownloadCSVButton(Button):
     def __init__(self, members_with_info, order):
@@ -101,12 +123,17 @@ class DownloadCSVButton(Button):
         else:
             return ""
 
+
 async def handle_nthwar_command(bot, interaction: Interaction, user_message: str,
                                 arrange_listing_order: str = "tag_asc",
                                 arrange_data_order: str = "fame_name_decks") -> None:
     parts = user_message.split()
     input_value = parts[1].lstrip('#')
     n = int(parts[2])
+
+    if not 1 <= n <= 10:
+        await interaction.response.send_message("War number must be between 1 and 10", ephemeral=True)
+        return
 
     if len(input_value) < 5:
         clan_tag = get_clan_tag_by_nickname(input_value, interaction.guild.id)
@@ -140,6 +167,7 @@ async def handle_nthwar_command(bot, interaction: Interaction, user_message: str
         view.arrange_listing_order = arrange_listing_order
         view.arrange_data_order = arrange_data_order
         view.n = n
+        view.add_item(SelectN("nthwar", handle_nthwar_command, view))
         view.add_item(SelectListingOrder("nthwar", handle_nthwar_command, view))
         view.add_item(SelectDataOrder("nthwar", handle_nthwar_command, view))
         view.add_item(DownloadCSVButton(members_with_info, order))
@@ -155,27 +183,29 @@ async def format_clan_members_embed(clan_tag: str, arrange_listing_order: str, a
                                     decks_func, n: int) -> (Embed, list, list):
     active_clan_name, active_members = await get_current_clan_members(clan_tag)
     former_members = await get_former_clan_members(clan_tag)
-    members = active_members + former_members
+
+    # Combine all members
+    all_members = active_members + former_members
 
     members_with_info = []
     async with aiohttp.ClientSession() as session:
-        for tag, name in members:
+        for tag, name in all_members:
             fame = await fame_func(clan_tag, tag)
             decks_used = await decks_func(clan_tag, tag)
             new_status = await is_new_player(clan_tag, tag)
             is_former = (tag, name) in former_members
 
-            if not (decks_used == 0 and is_former):
-                members_with_info.append((tag, name, fame, decks_used, new_status, is_former))
+            # Include all members, even those with 0 decks/fame
+            members_with_info.append((tag, name, fame or 0, decks_used or 0, new_status, is_former))
 
-    # Sorting logic
+    # Sorting logic - handle 0 values appropriately
     sorting_key = {
-        "decks_asc": lambda x: x[3],
-        "decks_desc": lambda x: x[3],
+        "decks_asc": lambda x: (x[3] if x[3] is not None else -1),
+        "decks_desc": lambda x: (x[3] if x[3] is not None else -1),
         "name_asc": lambda x: excel_like_sort_key(x[1]),
         "name_desc": lambda x: excel_like_sort_key(x[1]),
-        "fame_asc": lambda x: int(x[2]),
-        "fame_desc": lambda x: int(x[2]),
+        "fame_asc": lambda x: (int(x[2]) if x[2] is not None else -1),
+        "fame_desc": lambda x: (int(x[2]) if x[2] is not None else -1),
         "tag_asc": lambda x: excel_like_sort_key(x[0]),
         "tag_desc": lambda x: excel_like_sort_key(x[0]),
     }
@@ -183,17 +213,20 @@ async def format_clan_members_embed(clan_tag: str, arrange_listing_order: str, a
     reverse_order = arrange_listing_order.endswith("desc")
     members_with_info.sort(key=sorting_key[arrange_listing_order], reverse=reverse_order)
 
-    # Format the data
     def format_member_line(tag, name, fame, decks_used, new_status, is_former, order):
         formatted_line = []
         for key in order:
             if key == "fame":
-                formatted_line.append(f"{fame}")
+                formatted_line.append(f"{fame if fame is not None else 0}")
             elif key == "decks":
-                formatted_line.append(f"{decks_used}")
+                formatted_line.append(f"{decks_used if decks_used is not None else 0}")
             elif key == "name":
-                formatted_line.append(
-                    f"`{name}`{FORMER_MEMBER_EMOJI if is_former else ''}{' ' + NEW_MEMBER_EMOJI if new_status else ''}")
+                status = ""
+                if is_former:
+                    status += FORMER_MEMBER_EMOJI
+                if new_status:
+                    status += f" {NEW_MEMBER_EMOJI}"
+                formatted_line.append(f"`{name}`{status}")
         return " - ".join(formatted_line)
 
     order_map = {

@@ -6,7 +6,7 @@ from utils.api import *
 import statistics
 import io
 import matplotlib.pyplot as plt
-
+import numpy as np
 
 async def handle_average_command(interaction: Interaction, player_tag: str, from_war: int, to_war: int):
     # Clean up player tag - remove '#' if present and capitalize
@@ -19,6 +19,10 @@ async def handle_average_command(interaction: Interaction, player_tag: str, from
 
     if from_war < 1 or to_war < 1:
         await interaction.response.send_message("War numbers must be positive integers.", ephemeral=True)
+        return
+
+    if from_war > 10 or to_war > 10:
+        await interaction.response.send_message("I can't remember more than 10 weeks ago.", ephemeral=True)
         return
 
     await interaction.response.defer()
@@ -68,22 +72,33 @@ async def handle_average_command(interaction: Interaction, player_tag: str, from
         max_fame = max(fame_values)
         min_fame = min(fame_values)
 
+        # Calculate trend line using linear regression
+        war_numbers = list(range(from_war, to_war - 1, -1))  # Count down from from_war to to_war
+        trend_line = np.polyfit(war_numbers, fame_values, 1)
+        trend_func = np.poly1d(trend_line)
+        if to_war == 1:
+            next_war_prediction = trend_func(0)
+        elif to_war == 2:
+            next_war_prediction = trend_func(0)
+        else:
+            next_war_prediction = trend_func(war_numbers[-1] - 1)
+
         # Set up dark theme for matplotlib
         plt.style.use('dark_background')
         fig, ax = plt.subplots(figsize=(10, 6))
-        fig.patch.set_facecolor('#2F3136')  # Discord-like dark background
-        ax.set_facecolor('#2F3136')  # Discord-like dark background
-
-        # Create war numbers for x-axis (in chronological order from left to right)
-        war_numbers = list(range(from_war, to_war - 1, -1))  # Count down from from_war to to_war
+        fig.patch.set_facecolor('#2F3136')
+        ax.set_facecolor('#2F3136')
 
         # Plot with custom colors
         main_line_color = '#1E133E'
         average_line_color = '#9B59B6'
+        trend_line_color = '#ff00d6'
 
         # Line plot
         plt.plot(war_numbers, fame_values, marker='o', linestyle='-', color=main_line_color, linewidth=2,
                  markersize=8, markeredgecolor='white', markeredgewidth=1)
+        plt.plot(war_numbers, [trend_func(x) for x in war_numbers], color=trend_line_color, linestyle='--',
+                 label=f'Regression Line', linewidth=2)
         plt.axhline(y=average_fame, color=average_line_color, linestyle='--',
                     label=f'Average ({average_fame:.1f})', linewidth=2)
 
@@ -101,7 +116,8 @@ async def handle_average_command(interaction: Interaction, player_tag: str, from
         plt.gca().invert_xaxis()
 
         # Customize legend
-        plt.legend(facecolor='#2F3136', edgecolor='gray', labelcolor='white')
+        plt.legend(facecolor='#2F3136', edgecolor='gray', labelcolor='white',
+                   loc='upper left', bbox_to_anchor=(1, 1))
 
         # Add some padding to the plot
         plt.margins(x=0.05)
@@ -115,13 +131,13 @@ async def handle_average_command(interaction: Interaction, player_tag: str, from
         # Create embed
         embed = discord.Embed(
             title=f"Fame Analysis",
-            description=f"Player: {player_info.get('name')} ({player_tag})",
+            description=f"Player: {player_info.get('name')} (#{player_tag})",
             color=0x1E133E
         )
 
         embed.add_field(
             name="War Range",
-            value=f"From {from_war} to {to_war} wars ago",
+            value=f"From {from_war} to {to_war} wars ago \n {len(fame_values)} wars analyzed",
             inline=False
         )
 
@@ -135,12 +151,6 @@ async def handle_average_command(interaction: Interaction, player_tag: str, from
         embed.add_field(
             name="Median Fame",
             value=f"{FAME_EMOJI} {median_fame:.1f}",
-            inline=True
-        )
-
-        embed.add_field(
-            name="Wars Analyzed",
-            value=f"{len(fame_values)} wars",
             inline=True
         )
 
@@ -163,15 +173,10 @@ async def handle_average_command(interaction: Interaction, player_tag: str, from
                 inline=True
             )
 
-        # Add individual war breakdown
-        breakdown = ""
-        for war_num, fame in zip(war_numbers, fame_values):  # Using war_numbers directly since we want oldest first
-            breakdown += f"{war_num} wars ago: {FAME_EMOJI} {fame}\n"
-
         embed.add_field(
-            name="War Breakdown",
-            value=breakdown or "No data available",
-            inline=False
+            name=f'Prediction for {"current war" if to_war == 1 else f"{to_war-1} wars ago"}',
+            value=f"{FAME_EMOJI} {next_war_prediction:.1f}",
+            inline=True
         )
 
         # Send the embed and the graph
