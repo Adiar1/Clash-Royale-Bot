@@ -372,6 +372,79 @@ async def get_decks_used_n_wars_ago(clan_tag: str, player_tag: str, n: int) -> i
     set_cache(cache_key, decks_used)
     return decks_used
 
+async def get_weeks_ago_joined(clan_tag: str) -> List[Tuple[str, str, int]]:
+    # Get the current clan members
+    _, current_members = await get_current_clan_members(clan_tag)
+    member_weeks = []
+
+    # Check each member against past war logs
+    for member_tag, member_name in current_members:
+        weeks_ago = 0
+        found_in_log = True
+
+        # Check presence in nth war logs
+        for n in range(1, 11):
+            if not found_in_log:
+                break
+
+            _, nth_log = await nth_war_log(clan_tag, n)
+            if nth_log is None:
+                break
+
+            standings = nth_log.get('standings', [])
+            participant_tags = {
+                player.get('tag')
+                for standing in standings
+                for player in standing.get('clan', {}).get('participants', [])
+            }
+
+            if member_tag not in participant_tags:
+                found_in_log = False
+            else:
+                weeks_ago = n
+
+        member_weeks.append((member_tag, member_name, weeks_ago))
+
+    return member_weeks
+
+async def get_average_fame_for_members(clan_tag: str):
+    # Get the current clan members
+    _, current_members = await get_current_clan_members(clan_tag)
+    member_averages = []
+
+    # Get weeks ago joined for all members at once
+    member_weeks = await get_weeks_ago_joined(clan_tag)
+
+    # Create a dictionary for quick lookup of weeks ago
+    weeks_dict = {tag: weeks for tag, name, weeks in member_weeks}
+
+    # Calculate the average fame for each member
+    for member_tag, member_name in current_members:
+        max_n = weeks_dict.get(member_tag, 0)
+
+        if max_n == 0:
+            # If max_n is 0, the member has no recorded fame
+            member_averages.append((member_name, 0))
+            continue
+
+        total_fame = 0.0  # Ensure total_fame is a float to handle division
+
+        # Get fame for each week up to max_n
+        for n in range(1, max_n + 1):
+            fame = await get_fame_n_wars_ago(clan_tag, member_tag, n)
+            if fame is not None:
+                total_fame += float(fame)  # Convert fame to float
+
+        # Calculate average fame
+        if max_n > 0:
+            average_fame = total_fame / max_n
+        else:
+            average_fame = 0
+
+        member_averages.append((member_name, average_fame))
+
+    return member_averages
+
 async def current_war_log(clan_tag: str):
     cache_key = f"current_war_log_{clan_tag}"
     cached_data = get_cache(cache_key)

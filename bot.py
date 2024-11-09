@@ -7,6 +7,7 @@ from discord import Intents, app_commands, User, TextChannel
 from discord.ext import commands
 
 from commands.average import handle_average_command
+from commands.clan import handle_clan_command
 from commands.editperms import handle_editperms_command
 from commands.forcelink import handle_forcelink_command
 from commands.nthwar import handle_nthwar_command
@@ -183,6 +184,11 @@ async def viewperms(interaction):
 )
 async def average(interaction, player_tag: str, from_war: int, to_war: int):
     await handle_average_command(interaction, player_tag, from_war, to_war)
+
+@bot.tree.command(name="clan", description="List current clan members and how many weeks ago they joined")
+@app_commands.describe(clan_tag="The tag of the clan")
+async def clan(interaction, clan_tag: str):
+    await handle_clan_command(bot, interaction, f"/clan {clan_tag}")
 
 
 def main():
