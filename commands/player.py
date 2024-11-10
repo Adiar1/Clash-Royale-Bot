@@ -1,8 +1,14 @@
+import asyncio
+
+import aiohttp
 import discord
 from discord import Interaction
-import asyncio
-from utils.helpers import *
-from utils.api import *
+from utils.helpers import sanitize_tag, LEVEL_EMOJIS, EMOJI_TROPHYROAD, EVOLUTION_EMOJI, LEVEL_15_EMOJI, LEVEL_14_EMOJI, \
+    LEVEL_13_EMOJI, CW2_EMOJI, CC_EMOJI, GC_EMOJI, FAME_EMOJI, MULTIDECK_EMOJI, POLMEDAL_EMOJI, LEAGUE_IMAGES
+from utils.api import get_player_trophies, get_player_clan_info, get_player_badges, get_player_cards, \
+    get_player_best_trophies, get_player_info, get_player_path_of_legends_info, get_current_fame, get_last_fame, \
+    get_members_current_decks_used, get_last_decks_used
+
 
 async def handle_player_command(interaction: Interaction, player_tag: str):
     player_tag = sanitize_tag(player_tag)

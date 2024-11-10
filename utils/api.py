@@ -1,4 +1,3 @@
-import aiohttp
 import urllib.parse
 import time
 from typing import List, Tuple
@@ -74,40 +73,19 @@ async def get_current_fame(clan_tag: str, player_tag: str) -> str:
     return fame
 
 
-
 async def is_new_player(clan_tag: str, player_tag: str) -> bool:
     player_tag = sanitize_tag(player_tag)
 
-    # Fetch current clan members
-    _, members = await get_current_clan_members(clan_tag)
-    member_tags = {tag for tag, name in members}
+    # Get weeks ago joined for all members
+    member_weeks = await get_weeks_ago_joined(clan_tag)
 
-    # If player is not in the current members, return False
-    if player_tag not in member_tags:
-        return False
+    # Find the player in the member_weeks list
+    for member_tag, member_name, weeks_ago in member_weeks:
+        if member_tag == player_tag:
+            # If weeks_ago is 0, the player is new
+            return weeks_ago == 0
 
-    # Fetch members in the last war log
-    warlog_members = await list_members_in_last_war_log(clan_tag)
-    warlog_member_tags = {tag for tag, name in warlog_members}
-
-    # Fetch members in the last river race log
-    log_type, riverrace_log_data = await last_war_log(clan_tag)
-    riverrace_member_tags = set()
-    if riverrace_log_data:
-        items = riverrace_log_data.get('items', [])
-        for item in items:
-            participants = item.get('standings', []) if log_type == 'riverracelog' else item.get('participants', [])
-            for participant in participants:
-                player_list = participant.get('clan', {}).get('participants', []) if 'clan' in participant else [
-                    participant]
-                for player in player_list:
-                    riverrace_member_tags.add(player.get('tag'))
-
-    # Check if player is in the current members but not in warlog or riverrace logs
-    if player_tag in member_tags:
-        if player_tag not in warlog_member_tags and player_tag not in riverrace_member_tags:
-            return True
-
+    # If the player is not found in the list, they're not in the clan
     return False
 
 
@@ -519,7 +497,7 @@ async def is_real_clan_tag(clan_tag: str) -> bool:
 
 
 from typing import List, Tuple
-import aiohttp
+
 
 async def get_decks_used_today(clan_tag: str) -> List[Tuple[str, str, int]]:
     cache_key = f"decks_used_today_{clan_tag}"
@@ -566,3 +544,6 @@ async def get_tournament_info(tournament_tag: str) -> Tuple[str, List[Tuple[str,
                 return tournament_name, members_info
 
     return "Unknown Tournament", []
+
+
+

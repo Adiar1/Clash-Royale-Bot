@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from discord import Intents, app_commands, User, TextChannel
 from discord.ext import commands
 
-from commands.average import handle_average_command
+from commands.stats import handle_stats_command
 from commands.clan import handle_clan_command
 from commands.editperms import handle_editperms_command
 from commands.forcelink import handle_forcelink_command
@@ -20,9 +20,11 @@ from commands.members import handle_members_command
 from commands.info import handle_info_command
 from commands.nicklink import handle_nicklink_command
 from commands.reminders import handle_reminders_command
+from commands.train_ppo import handle_train_ppo_command
 from commands.viewnicks import handle_viewnicks_command
 from commands.rankings import handle_rankings_command
 from commands.viewperms import handle_viewperms_command
+from commands.whotokick import handle_whotokick_command
 from commands.wipelinks import handle_wipelinks_command
 from utils.database import init_db
 from utils.helpers import is_privileged, get_privileged_roles
@@ -176,19 +178,33 @@ async def viewperms(interaction):
     await handle_viewperms_command(interaction)
 
 
-@bot.tree.command(name="average", description="Calculate average fame over a range of wars")
+@bot.tree.command(name="stats", description="Calculate individual stats over a range of wars")
 @app_commands.describe(
     player_tag="The tag of the player",
     from_war="Starting from how many weeks ago (1-10)",
     to_war="Ending at how many weeks ago (1-10)"
 )
-async def average(interaction, player_tag: str, from_war: int, to_war: int):
-    await handle_average_command(interaction, player_tag, from_war, to_war)
+async def stats(interaction, player_tag: str, from_war: int, to_war: int):
+    await handle_stats_command(interaction, player_tag, from_war, to_war)
 
 @bot.tree.command(name="clan", description="List current clan members and how many weeks ago they joined")
 @app_commands.describe(clan_tag="The tag of the clan")
 async def clan(interaction, clan_tag: str):
     await handle_clan_command(bot, interaction, f"/clan {clan_tag}")
+
+@bot.tree.command(name="whotokick", description="Get recommendations for members to kick from the clan")
+@app_commands.describe(
+    clan_tag="The tag of the clan",
+    n="Number of members to recommend for kicking (1-10)"
+)
+async def whotokick(interaction, clan_tag: str, n: int = 5):
+    await handle_whotokick_command(bot, interaction, clan_tag, n)
+
+@bot.tree.command(name="train_ppo", description="Train a PPO model to predict clan member fame")
+@app_commands.describe(clan_tags="Comma-separated list of clan tags to train on (no spaces)")
+async def train_ppo(interaction, clan_tags: str):
+    await handle_train_ppo_command(interaction, clan_tags)
+
 
 
 def main():

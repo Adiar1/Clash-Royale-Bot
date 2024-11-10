@@ -8,13 +8,13 @@ import io
 import matplotlib.pyplot as plt
 import numpy as np
 
-async def handle_average_command(interaction: Interaction, player_tag: str, from_war: int, to_war: int):
+async def handle_stats_command(interaction: Interaction, player_tag: str, from_war: int, to_war: int):
     # Clean up player tag - remove '#' if present and capitalize
     player_tag = player_tag.strip('#').upper()
 
-    if from_war <= to_war:
+    if from_war < to_war:
         await interaction.response.send_message(
-            "The 'from' must be greater than the 'to' since it represents older wars", ephemeral=True)
+            "The 'from' must be greater or equal than the 'to' since it represents older wars", ephemeral=True)
         return
 
     if from_war < 1 or to_war < 1:
