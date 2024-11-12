@@ -28,7 +28,7 @@ This Discord bot provides various commands and functionalities related to Clash 
 
 2. Install required packages:
    ```
-   pip install -r requirements.txt
+   pip install discord.py==2.3.2 aiohttp requests numpy matplotlib python-dotenv
    ```
 
 3. Create a `.env` file in the root directory with the following content:
