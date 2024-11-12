@@ -15,7 +15,7 @@ This Discord bot provides various commands and functionalities related to Clash 
 ## Prerequisites
 
 - Python 3.8+
-- Discord Bot Token
+- Discord Bot Token found [here](https://discord.com/developers/applications)
 - Clash Royale API Key found [here](https://developer.clashroyale.com/#/)
 
 ## Installation
