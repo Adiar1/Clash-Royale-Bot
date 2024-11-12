@@ -8,6 +8,7 @@ import io
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 async def handle_stats_command(interaction: Interaction, player_tag: str, from_war: int, to_war: int):
     # Clean up player tag - remove '#' if present and capitalize
     player_tag = player_tag.strip('#').upper()
@@ -43,7 +44,7 @@ async def handle_stats_command(interaction: Interaction, player_tag: str, from_w
 
         # Gather fame data for each war in the range
         fame_tasks = []
-        for n in range(from_war, to_war - 1, -1):  # Changed range to count down from from_war to to_war
+        for n in range(from_war, to_war - 1, -1):
             fame_tasks.append(get_fame_n_wars_ago(clan_tag, f"#{player_tag}", n))
 
         fame_results = await asyncio.gather(*fame_tasks)
@@ -63,25 +64,8 @@ async def handle_stats_command(interaction: Interaction, player_tag: str, from_w
         # Calculate statistics
         average_fame = statistics.mean(fame_values)
         median_fame = statistics.median(fame_values)
-        if len(fame_values) > 1:
-            stdev_fame = statistics.stdev(fame_values)
-            variance = statistics.variance(fame_values)
-        else:
-            stdev_fame = 0
-            variance = 0
         max_fame = max(fame_values)
         min_fame = min(fame_values)
-
-        # Calculate trend line using linear regression
-        war_numbers = list(range(from_war, to_war - 1, -1))  # Count down from from_war to to_war
-        trend_line = np.polyfit(war_numbers, fame_values, 1)
-        trend_func = np.poly1d(trend_line)
-        if to_war == 1:
-            next_war_prediction = trend_func(0)
-        elif to_war == 2:
-            next_war_prediction = trend_func(0)
-        else:
-            next_war_prediction = trend_func(war_numbers[-1] - 1)
 
         # Set up dark theme for matplotlib
         plt.style.use('dark_background')
@@ -94,11 +78,30 @@ async def handle_stats_command(interaction: Interaction, player_tag: str, from_w
         average_line_color = '#9B59B6'
         trend_line_color = '#ff00d6'
 
+        war_numbers = list(range(from_war, to_war - 1, -1))
+
         # Line plot
-        plt.plot(war_numbers, fame_values, marker='o', linestyle='-', color=main_line_color, linewidth=2,
-                 markersize=8, markeredgecolor='white', markeredgewidth=1)
-        plt.plot(war_numbers, [trend_func(x) for x in war_numbers], color=trend_line_color, linestyle='--',
-                 label=f'Regression Line', linewidth=2)
+        plt.plot(war_numbers, fame_values, marker='o', linestyle='-' if len(fame_values) > 1 else 'None',
+                 color=main_line_color, linewidth=2, markersize=8, markeredgecolor='white', markeredgewidth=1)
+
+        # Only calculate and plot trend line if we have more than one point
+        if len(fame_values) > 1:
+            trend_line = np.polyfit(war_numbers, fame_values, 1)
+            trend_func = np.poly1d(trend_line)
+            plt.plot(war_numbers, [trend_func(x) for x in war_numbers], color=trend_line_color,
+                     linestyle='--', label=f'Regression Line', linewidth=2)
+
+            # Calculate prediction
+            if to_war == 1:
+                next_war_prediction = trend_func(0)
+            elif to_war == 2:
+                next_war_prediction = trend_func(0)
+            else:
+                next_war_prediction = trend_func(war_numbers[-1] - 1)
+        else:
+            # For single point, use the point value as prediction
+            next_war_prediction = fame_values[0]
+
         plt.axhline(y=average_fame, color=average_line_color, linestyle='--',
                     label=f'Average ({average_fame:.1f})', linewidth=2)
 
@@ -166,7 +169,9 @@ async def handle_stats_command(interaction: Interaction, player_tag: str, from_w
             inline=True
         )
 
+        # Only add standard deviation for multiple points
         if len(fame_values) > 1:
+            stdev_fame = statistics.stdev(fame_values)
             embed.add_field(
                 name="Standard Deviation",
                 value=f"{stdev_fame:.1f}",
