@@ -20,7 +20,6 @@ from commands.members import handle_members_command
 from commands.info import handle_info_command
 from commands.nicklink import handle_nicklink_command
 from commands.reminders import handle_reminders_command
-from commands.train_ppo import handle_train_ppo_command
 from commands.viewnicks import handle_viewnicks_command
 from commands.rankings import handle_rankings_command
 from commands.viewperms import handle_viewperms_command
@@ -199,11 +198,6 @@ async def clan(interaction, clan_tag: str):
 )
 async def whotokick(interaction, clan_tag: str, n: int = 5):
     await handle_whotokick_command(bot, interaction, clan_tag, n)
-
-@bot.tree.command(name="train_ppo", description="Train a PPO model to predict clan member fame")
-@app_commands.describe(clan_tags="Comma-separated list of clan tags to train on (no spaces)")
-async def train_ppo(interaction, clan_tags: str):
-    await handle_train_ppo_command(interaction, clan_tags)
 
 
 
