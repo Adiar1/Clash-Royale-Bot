@@ -1,21 +1,22 @@
 import discord
 from discord import Interaction
 import asyncio
-from utils.helpers import *
-from utils.api import *
 import statistics
 import io
 import matplotlib.pyplot as plt
 import numpy as np
+from utils.helpers import *
+from utils.api import *
 
 
 async def handle_stats_command(interaction: Interaction, user_or_tag: str, from_war: int, to_war: int):
-    # Determine if the input is a mention or a tag
+    # Determine if input is a mention or a tag
     if user_or_tag.startswith('<@') and user_or_tag.endswith('>'):
         # It's a user mention
         player_tag = get_player_tag_from_mention(user_or_tag, str(interaction.guild.id))
         if not player_tag:
-            await interaction.response.send_message("This user doesn't have a linked Clash Royale account.", ephemeral=True)
+            await interaction.response.send_message(
+                "This user doesn't have a linked Clash Royale account.", ephemeral=True)
             return
     else:
         # It's a player tag
@@ -37,7 +38,7 @@ async def handle_stats_command(interaction: Interaction, user_or_tag: str, from_
     await interaction.response.defer()
 
     try:
-        # First get player info to check if they're in a clan
+        # Get player info to check if they're in a clan
         player_info = await get_player_info(player_tag)
         if not player_info:
             await interaction.followup.send("Player not found. Please check the tag and try again.")
@@ -100,12 +101,7 @@ async def handle_stats_command(interaction: Interaction, user_or_tag: str, from_
                      linestyle='--', label=f'Regression Line', linewidth=2)
 
             # Calculate prediction
-            if to_war == 1:
-                next_war_prediction = trend_func(0)
-            elif to_war == 2:
-                next_war_prediction = trend_func(0)
-            else:
-                next_war_prediction = trend_func(war_numbers[-1] - 1)
+            next_war_prediction = trend_func(war_numbers[-1] - 1)
         else:
             # For single point, use the point value as prediction
             next_war_prediction = fame_values[0]
@@ -196,9 +192,7 @@ async def handle_stats_command(interaction: Interaction, user_or_tag: str, from_
         file = discord.File(buf, filename="fame_graph.png")
         embed.set_image(url="attachment://fame_graph.png")
 
-        await interaction.followup.send(embed=embed, file=file)
+        await interaction.followup.send(file=file, embed=embed)
 
-    except aiohttp.ClientError:
-        await interaction.followup.send("Network error occurred. Please try again later.")
     except Exception as e:
         await interaction.followup.send(f"An error occurred: {str(e)}")
