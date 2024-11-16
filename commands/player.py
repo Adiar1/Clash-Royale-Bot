@@ -20,7 +20,7 @@ async def handle_player_command(interaction: Interaction, user_or_tag: str):
             return
     else:
         # It's a player tag
-        player_tag = user_or_tag.lstrip('#')
+        player_tag = user_or_tag.lstrip('#').upper()
 
     await interaction.response.defer()
 
