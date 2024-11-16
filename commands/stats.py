@@ -9,9 +9,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-async def handle_stats_command(interaction: Interaction, player_tag: str, from_war: int, to_war: int):
-    # Clean up player tag - remove '#' if present and capitalize
-    player_tag = player_tag.strip('#').upper()
+async def handle_stats_command(interaction: Interaction, user_or_tag: str, from_war: int, to_war: int):
+    # Determine if the input is a mention or a tag
+    if user_or_tag.startswith('<@') and user_or_tag.endswith('>'):
+        # It's a user mention
+        player_tag = get_player_tag_from_mention(user_or_tag, str(interaction.guild.id))
+        if not player_tag:
+            await interaction.response.send_message("This user doesn't have a linked Clash Royale account.", ephemeral=True)
+            return
+    else:
+        # It's a player tag
+        player_tag = user_or_tag.strip('#').upper()
 
     if from_war < to_war:
         await interaction.response.send_message(
@@ -188,7 +196,9 @@ async def handle_stats_command(interaction: Interaction, player_tag: str, from_w
         file = discord.File(buf, filename="fame_graph.png")
         embed.set_image(url="attachment://fame_graph.png")
 
-        await interaction.followup.send(file=file, embed=embed)
+        await interaction.followup.send(embed=embed, file=file)
 
+    except aiohttp.ClientError:
+        await interaction.followup.send("Network error occurred. Please try again later.")
     except Exception as e:
         await interaction.followup.send(f"An error occurred: {str(e)}")
