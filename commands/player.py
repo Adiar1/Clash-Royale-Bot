@@ -4,17 +4,23 @@ import aiohttp
 import discord
 from discord import Interaction
 from utils.helpers import sanitize_tag, LEVEL_EMOJIS, EMOJI_TROPHYROAD, EVOLUTION_EMOJI, LEVEL_15_EMOJI, LEVEL_14_EMOJI, \
-    LEVEL_13_EMOJI, CW2_EMOJI, CC_EMOJI, GC_EMOJI, FAME_EMOJI, MULTIDECK_EMOJI, POLMEDAL_EMOJI, LEAGUE_IMAGES
+    LEVEL_13_EMOJI, CW2_EMOJI, CC_EMOJI, GC_EMOJI, FAME_EMOJI, MULTIDECK_EMOJI, POLMEDAL_EMOJI, LEAGUE_IMAGES, \
+    get_player_tag_from_mention
 from utils.api import get_player_trophies, get_player_clan_info, get_player_badges, get_player_cards, \
     get_player_best_trophies, get_player_info, get_player_path_of_legends_info, get_current_fame, get_last_fame, \
     get_members_current_decks_used, get_last_decks_used
 
 
-async def handle_player_command(interaction: Interaction, player_tag: str):
-    player_tag = sanitize_tag(player_tag)
-
-    if player_tag.startswith('#'):
-        player_tag = player_tag[1:]
+async def handle_player_command(interaction: Interaction, user_or_tag: str):
+    if user_or_tag.startswith('<@') and user_or_tag.endswith('>'):
+        # It's a user mention
+        player_tag = get_player_tag_from_mention(user_or_tag, str(interaction.guild.id))
+        if not player_tag:
+            await interaction.response.send_message("This user doesn't have a linked Clash Royale account.", ephemeral=True)
+            return
+    else:
+        # It's a player tag
+        player_tag = user_or_tag.lstrip('#')
 
     await interaction.response.defer()
 

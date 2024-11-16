@@ -160,15 +160,13 @@ async def editperms(interaction):
         role.id in privileged_role_ids for role in interaction.user.roles
     )
 
-    # Deny access if the user has no privileged roles
-    if not user_has_privileged_role:
+    # Allow access if there are no privileged roles or if the user has a privileged role
+    if not privileged_role_ids or user_has_privileged_role:
+        await handle_editperms_command(bot, interaction)
+    else:
         await interaction.response.send_message(
             "You don't have permission to use this command.", ephemeral=True
         )
-        return
-
-    # Proceed if the user has a privileged role
-    await handle_editperms_command(bot, interaction)
 
 
 

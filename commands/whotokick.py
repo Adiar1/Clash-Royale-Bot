@@ -1,4 +1,4 @@
-from utils.api import is_real_clan_tag
+from utils.api import is_real_clan_tag, get_current_clan_members
 from utils.scores import get_member_scores
 import discord
 from discord import Interaction, ButtonStyle, SelectOption
@@ -70,6 +70,9 @@ async def handle_whotokick_command(bot, interaction: Interaction, input_value: s
             await interaction.followup.send("Invalid clan tag. Please check and try again.", ephemeral=True)
             return
 
+        # Get clan name
+        clan_name, _ = await get_current_clan_members(clan_tag)
+
         member_scores = await get_member_scores(clan_tag)
 
         # Filter out members with "N/A" scores and sort the rest by score (lowest first)
@@ -77,7 +80,7 @@ async def handle_whotokick_command(bot, interaction: Interaction, input_value: s
 
         # Create embed
         embed = discord.Embed(
-            title=f"Kick Recommendations for Clan #{clan_tag}",
+            title=f"Kick Recommendations for {clan_name} (#{clan_tag})",
             description=f"Here are the top {min(n, len(sorted_members))} members recommended for removal:",
             color=0x1E133E
         )

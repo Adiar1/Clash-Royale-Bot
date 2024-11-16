@@ -291,6 +291,30 @@ def link_player_tag(discord_id, player_tag, alt=False):
         logger.error(f"Database error: {e}")
         return None
 
+import sqlite3
+from utils.database import DATABASE_NAME, logger
+
+
+def get_player_tag_from_mention(user_mention, guild_id):
+    try:
+        # Extract user ID from mention
+        user_id = user_mention.strip('<@!>')
+        
+        conn = sqlite3.connect(DATABASE_NAME)
+        c = conn.cursor()
+        c.execute('SELECT player_tags FROM user_links WHERE discord_id = ?', (user_id,))
+        result = c.fetchone()
+        conn.close()
+        
+        if result and result[0]:
+            # Return the first (main) player tag
+            return result[0].split(',')[0]
+        return None
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
+        return None
+
+
 async def is_privileged(interaction):
     guild_id = str(interaction.guild.id)
     user_roles = [role.id for role in interaction.user.roles]

@@ -7,11 +7,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 async def handle_nicklink_command(interaction: Interaction, clan_tag: str, nickname: str):
+    # Sanitize the clan_tag
+    clan_tag = clan_tag.strip('#').upper()
+
     if len(nickname) >= 5:
         await interaction.response.send_message("Nickname must be less than 5 characters.", ephemeral=True)
         return
-
-    clan_tag = clan_tag.replace('#', '').upper()
+    
     guild_id = str(interaction.guild_id)  # Get the guild ID
 
     try:
