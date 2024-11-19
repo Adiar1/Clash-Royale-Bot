@@ -20,12 +20,14 @@ from commands.members import handle_members_command
 from commands.info import handle_info_command
 from commands.nicklink import handle_nicklink_command
 from commands.reminders import handle_reminders_command
+from commands.viewmemberroles import handle_viewmemberroles_command
 from commands.viewnicks import handle_viewnicks_command
 from commands.rankings import handle_rankings_command
 from commands.viewperms import handle_viewperms_command
 from commands.whotokick import handle_whotokick_command
 from commands.wipelinks import handle_wipelinks_command
 from utils.database import init_db
+from commands.editmemberroles import handle_editmemberroles_command
 from utils.helpers import is_privileged, get_privileged_roles
 
 # Set up logging
@@ -141,32 +143,7 @@ async def rankings(interaction, tourny_tag: str):
 
 @bot.tree.command(name="editperms", description="Edit privileged roles in this server")
 async def editperms(interaction):
-    guild_id = str(interaction.guild.id)
-    current_roles = get_privileged_roles(guild_id)  # Get privileged roles for this server
-
-    # Ensure that empty values are treated as no roles
-    current_roles = [role_id for role_id in current_roles if role_id.strip()]
-
-    # If no privileged roles are defined, allow access
-    if not current_roles:
-        await handle_editperms_command(bot, interaction)
-        return
-
-    # Convert role IDs from strings to integers for comparison
-    privileged_role_ids = set(map(int, filter(str.isdigit, current_roles)))
-
-    # Check if the user has any of the privileged roles
-    user_has_privileged_role = any(
-        role.id in privileged_role_ids for role in interaction.user.roles
-    )
-
-    # Allow access if there are no privileged roles or if the user has a privileged role
-    if not privileged_role_ids or user_has_privileged_role:
-        await handle_editperms_command(bot, interaction)
-    else:
-        await interaction.response.send_message(
-            "You don't have permission to use this command.", ephemeral=True
-        )
+    await handle_editperms_command(bot, interaction)
 
 
 
@@ -198,6 +175,16 @@ async def whotokick(interaction, clan_tag: str, n: int = 5):
     await handle_whotokick_command(bot, interaction, clan_tag, n)
 
 
+@bot.tree.command(name="editmemberroles", description="Edit roles corresponding to Clash Royale positions")
+async def editmemberroles(interaction):
+    if await is_privileged(interaction):
+        await handle_editmemberroles_command(bot, interaction)
+    else:
+        await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
+
+@bot.tree.command(name="viewmemberroles", description="View roles corresponding to Clash Royale positions")
+async def viewmemberroles(interaction):
+    await handle_viewmemberroles_command(interaction)
 
 def main():
     load_dotenv()

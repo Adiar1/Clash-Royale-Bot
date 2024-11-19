@@ -32,6 +32,11 @@ def init_db():
                 role_ids TEXT NOT NULL
             )
         ''')
+        c.execute('''CREATE TABLE IF NOT EXISTS member_roles
+                     (guild_id INTEGER PRIMARY KEY,
+                      member_id INTEGER,
+                      elder_id INTEGER,
+                      coLeader_id INTEGER)''')
         conn.commit()
         conn.close()
         logger.info("Database and tables created successfully.")
