@@ -49,6 +49,8 @@ async def handle_info_command(interaction: Interaction) -> None:
 - `/nicklink [clan_tag] [nickname]` - Link clan tag to nickname
 - `/reminders [channel] [clan_tag]` - Set up deck usage reminders
 - `/editperms` - Edit privileged roles
+- `/editmemberroles` - Edit roles for clan roles
+- `/viewmemberroles` - View roles for clan roles
 - `/viewperms` - View privileged roles
         """,
         inline=False
