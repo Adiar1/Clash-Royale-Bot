@@ -174,6 +174,38 @@ def add_privileged_roles(guild_id, role_ids):
         return False
 
 
+def update_member_roles(guild_id, position, role_id):
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        c = conn.cursor()
+
+        # Check if the guild already has a row
+        c.execute('SELECT * FROM member_roles WHERE guild_id = ?', (guild_id,))
+        existing_row = c.fetchone()
+
+        if existing_row:
+            # Update the existing row
+            c.execute(f'''
+                UPDATE member_roles
+                SET {position}_id = ?
+                WHERE guild_id = ?
+            ''', (role_id, guild_id))
+        else:
+            # Insert a new row
+            c.execute(f'''
+                INSERT INTO member_roles (guild_id, {position}_id)
+                VALUES (?, ?)
+            ''', (guild_id, role_id))
+
+        conn.commit()
+        return True
+    except Exception as e:
+        logger.error(f"Error updating member roles: {e}")
+        return False
+    finally:
+        conn.close()
+
+
 def update_player_tags(discord_id, new_tags):
     try:
         conn = sqlite3.connect(DATABASE_NAME)
@@ -291,8 +323,27 @@ def link_player_tag(discord_id, player_tag, alt=False):
         logger.error(f"Database error: {e}")
         return None
 
-import sqlite3
-from utils.database import DATABASE_NAME, logger
+
+def get_linked_discord_id(player_tag):
+    try:
+        # Strip '#' and capitalize the tag
+        formatted_tag = player_tag.lstrip('#').upper()
+
+        conn = sqlite3.connect(DATABASE_NAME)
+        c = conn.cursor()
+        c.execute(
+            'SELECT discord_id FROM user_links WHERE player_tags = ? OR player_tags LIKE ? OR player_tags LIKE ? OR player_tags LIKE ?',
+            (formatted_tag, f'{formatted_tag},%', f'%,{formatted_tag},%', f'%,{formatted_tag}')
+        )
+        result = c.fetchone()
+        conn.close()
+        if result:
+            return result[0]
+        else:
+            return None
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
+        return None
 
 
 def get_player_tag_from_mention(user_mention, guild_id):
@@ -315,9 +366,28 @@ def get_player_tag_from_mention(user_mention, guild_id):
         return None
 
 
+
+
 async def is_privileged(interaction):
     guild_id = str(interaction.guild.id)
     user_roles = [role.id for role in interaction.user.roles]
     privileged_roles = get_privileged_roles(guild_id)
     return any(str(role_id) in privileged_roles for role_id in user_roles)
 
+def get_member_roles(guild_id):
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        c = conn.cursor()
+        c.execute('SELECT member_id, elder_id, coLeader_id FROM member_roles WHERE guild_id = ?', (guild_id,))
+        result = c.fetchone()
+        conn.close()
+        if result:
+            return {
+                'member': result[0],
+                'elder': result[1],
+                'coLeader': result[2]
+            }
+        return None
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
+        return None
