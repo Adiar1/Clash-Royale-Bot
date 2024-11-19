@@ -12,6 +12,14 @@ This Discord bot provides various commands and functionalities related to Clash 
 - Privileged role management
 - And more!
 
+## Add the Bot to Your Server
+
+To use this bot in your Discord server, simply click on the following link:
+
+[Add Clash Royale Bot to Your Server](https://discord.com/oauth2/authorize?client_id=1260102504377483286&permissions=8&integration_type=0&scope=bot)
+
+**Note:** This bot is currently being used by 10 of the top 100 clans in the USA!
+
 ## Prerequisites
 
 - Python 3.8+
