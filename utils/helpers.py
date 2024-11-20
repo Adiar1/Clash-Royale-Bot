@@ -365,6 +365,32 @@ def get_player_tag_from_mention(user_mention, guild_id):
         logger.error(f"Database error: {e}")
         return None
 
+import sqlite3
+from utils.database import DATABASE_NAME, logger
+
+def get_member_role(guild_id, position):
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        c = conn.cursor()
+        c.execute('SELECT role_id FROM member_roles WHERE guild_id = ? AND position = ?', (guild_id, position))
+        result = c.fetchone()
+        conn.close()
+        return result[0] if result else None
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
+        return None
+
+async def assign_role_based_on_position(member, position, guild):
+    role_id = get_member_role(str(guild.id), position.lower())
+    if role_id:
+        role = guild.get_role(int(role_id))
+        if role:
+            await member.add_roles(role)
+            logger.info(f"Assigned role {role.name} to {member.name}")
+        else:
+            logger.warning(f"Role with ID {role_id} not found in guild {guild.name}")
+    else:
+        logger.warning(f"No role configured for position {position} in guild {guild.name}")
 
 
 

@@ -14,22 +14,22 @@ def init_db():
         c = conn.cursor()
         c.execute('''
             CREATE TABLE IF NOT EXISTS user_links (
-                discord_id TEXT PRIMARY KEY,
+                discord_id INTEGER PRIMARY KEY,
                 player_tags TEXT NOT NULL
             )
         ''')
         c.execute('''
             CREATE TABLE IF NOT EXISTS clan_links (
                 clan_tag TEXT,
-                guild_id TEXT,
+                guild_id INTEGER,
                 nickname TEXT NOT NULL,
                 PRIMARY KEY (clan_tag, guild_id)
             )
         ''')
         c.execute('''
             CREATE TABLE IF NOT EXISTS privileged_roles (
-                guild_id TEXT PRIMARY KEY,
-                role_ids TEXT NOT NULL
+                guild_id INTEGER PRIMARY KEY,
+                role_ids INTEGER NOT NULL
             )
         ''')
         c.execute('''CREATE TABLE IF NOT EXISTS member_roles
