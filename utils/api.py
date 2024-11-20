@@ -1,7 +1,9 @@
 import urllib.parse
 import time
-from typing import List, Tuple
 from utils.helpers import sanitize_tag, CLASH_ROYALE_API_BASE_URL, CLASH_ROYALE_API_KEY
+import urllib.parse
+import aiohttp
+from typing import List, Tuple
 
 # Cache setup
 cache = {}
@@ -496,7 +498,7 @@ async def is_real_clan_tag(clan_tag: str) -> bool:
             return response.status == 200
 
 
-from typing import List, Tuple
+
 
 
 async def get_decks_used_today(clan_tag: str) -> List[Tuple[str, str, int]]:
@@ -523,9 +525,7 @@ async def get_decks_used_today(clan_tag: str) -> List[Tuple[str, str, int]]:
     set_cache(cache_key, [])
     return []
 
-from typing import List, Tuple
-import urllib.parse
-import aiohttp
+
 
 async def get_tournament_info(tournament_tag: str) -> Tuple[str, List[Tuple[str, int, int]]]:
     headers = {"Authorization": f"Bearer {CLASH_ROYALE_API_KEY}"}
@@ -544,6 +544,4 @@ async def get_tournament_info(tournament_tag: str) -> Tuple[str, List[Tuple[str,
                 return tournament_name, members_info
 
     return "Unknown Tournament", []
-
-
 

@@ -25,6 +25,7 @@ from commands.viewnicks import handle_viewnicks_command
 from commands.rankings import handle_rankings_command
 from commands.viewperms import handle_viewperms_command
 from commands.whotokick import handle_whotokick_command
+from commands.whotopromote import handle_whotopromote_command
 from commands.wipelinks import handle_wipelinks_command
 from utils.database import init_db
 from commands.editmemberroles import handle_editmemberroles_command
@@ -168,11 +169,19 @@ async def clan(interaction, clan_tag: str):
 
 @bot.tree.command(name="whotokick", description="Get recommendations for members to kick from the clan")
 @app_commands.describe(
-    clan_tag="The tag of the clan",
-    n="Number of members to recommend for kicking (1-10)"
+    clan_tag="Enter either a clan tag or a nickname",
+    n="Number of members to list (1-10)"
 )
 async def whotokick(interaction, clan_tag: str, n: int = 5):
     await handle_whotokick_command(bot, interaction, clan_tag, n)
+
+@bot.tree.command(name="whotopromote", description="Get recommendations for members who might deserve a promotion")
+@app_commands.describe(
+    clan_tag="Enter either a clan tag or a nickname",
+    n="Number of members to list (1-10)"
+)
+async def whotopromote(interaction, clan_tag: str, n: int = 5):
+    await handle_whotopromote_command(bot, interaction, clan_tag, n)
 
 
 @bot.tree.command(name="editmemberroles", description="Edit roles corresponding to Clash Royale positions")
@@ -185,6 +194,7 @@ async def editmemberroles(interaction):
 @bot.tree.command(name="viewmemberroles", description="View roles corresponding to Clash Royale positions")
 async def viewmemberroles(interaction):
     await handle_viewmemberroles_command(interaction)
+
 
 def main():
     load_dotenv()
