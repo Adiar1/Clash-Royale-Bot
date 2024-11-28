@@ -7,7 +7,8 @@ import csv
 import io
 from utils.api import get_current_clan_members, get_former_clan_members, is_new_player, get_last_fame, \
     get_last_decks_used, is_real_clan_tag
-from utils.helpers import FAME_EMOJI, NEW_MEMBER_EMOJI, MULTIDECK_EMOJI, FORMER_MEMBER_EMOJI, get_clan_tag_by_nickname
+from utils.helpers import FAME_EMOJI, NEW_MEMBER_EMOJI, MULTIDECK_EMOJI, FORMER_MEMBER_EMOJI, get_clan_tag_by_nickname, \
+    sanitize_tag
 
 
 class SelectDataOrder(Select):
@@ -37,6 +38,7 @@ class SelectDataOrder(Select):
             arrange_data_order=self._view.arrange_data_order
         )
 
+
 class SelectListingOrder(Select):
     OPTIONS = [
         SelectOption(label="Sort by Fame Ascending", value="fame_asc"),
@@ -65,6 +67,7 @@ class SelectListingOrder(Select):
             arrange_listing_order=self._view.arrange_listing_order,
             arrange_data_order=self._view.arrange_data_order
         )
+
 
 class DownloadCSVButton(Button):
     def __init__(self, members_with_info, order):
@@ -99,9 +102,10 @@ class DownloadCSVButton(Button):
         else:
             return ""
 
+
 async def handle_lastwar_command(bot, interaction: Interaction, user_message: str,
-                                 arrange_listing_order: str = "tag_asc",
-                                 arrange_data_order: str = "fame_name_decks") -> None:
+                               arrange_listing_order: str = "tag_asc",
+                               arrange_data_order: str = "fame_name_decks") -> None:
     parts = user_message.split()
     input_value = parts[1].lstrip('#')
 
@@ -111,7 +115,7 @@ async def handle_lastwar_command(bot, interaction: Interaction, user_message: st
             await interaction.response.send_message("Oopsy daisies. Check that tag/nickname real quick", ephemeral=True)
             return
     else:
-        clan_tag = input_value
+        clan_tag = sanitize_tag(input_value)
 
     if not await is_real_clan_tag(clan_tag):
         await interaction.response.send_message("Oopsy daisies. Check that tag/nickname real quick", ephemeral=True)
@@ -124,7 +128,7 @@ async def handle_lastwar_command(bot, interaction: Interaction, user_message: st
         try:
             embed, members_with_info, order = await asyncio.wait_for(
                 format_clan_members_embed(clan_tag, arrange_listing_order, arrange_data_order, get_last_fame,
-                                          get_last_decks_used),
+                                       get_last_decks_used),
                 timeout=timeout
             )
         except asyncio.TimeoutError:
@@ -144,12 +148,14 @@ async def handle_lastwar_command(bot, interaction: Interaction, user_message: st
         print(f"Error handling lastwar command: {e}")
         await interaction.response.send_message("An error occurred while processing your request.")
 
+
 def excel_like_sort_key(s):
     # Normalize to handle special characters and case insensitivity
     return ''.join(f"{ord(c):04}" for c in s.strip().lower())
 
+
 async def format_clan_members_embed(clan_tag: str, arrange_listing_order: str, arrange_data_order: str, fame_func,
-                                    decks_func) -> (Embed, list, list):
+                                  decks_func) -> (Embed, list, list):
     active_clan_name, active_members = await get_current_clan_members(clan_tag)
     former_members = await get_former_clan_members(clan_tag)
     members = active_members + former_members
@@ -222,7 +228,7 @@ async def format_clan_members_embed(clan_tag: str, arrange_listing_order: str, a
         for key in order
     )
     embed = Embed(title=f"Fame Earned and Decks Used in Last War by Members of {active_clan_name} #{clan_tag}",
-                  color=0x1E133E)
+                 color=0x1E133E)
     embed.description = "\n".join([header] + member_lines)
     embed.set_footer(
         text=f"{FORMER_MEMBER_EMOJI} Indicates a former member \n{NEW_MEMBER_EMOJI} Indicates a member who joined after"
