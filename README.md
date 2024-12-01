@@ -67,6 +67,14 @@ Here are some of the available commands:
 - `/link <player_tag> [alt_account]`: Link a player tag to your Discord account
 - `/profile [user]`: View linked player tags for yourself or another user
 - `/whotokick <clan_tag> [n]`: Get recommendations for members to kick from the clan
+- `/profile [user]`: View linked player tags for yourself or another user
+- `/whotokick <clan_tag> [n]`: Get recommendations for members to kick from the clan
+- `/stats <player_tag> <from_war> <to_war>`: Calculate individual stats over a range of wars
+- `/clan <clan_tag>`: List current clan members and how many weeks ago they joined
+- `/forcelink <target_user> <player_tag> <alt_account>`: Forcefully link a player tag to another user's Discord account
+- `/nicklink <clan_tag> <nickname>`: Link a clan tag to a nickname
+- `/reminders <channel> <clan_tag>`: Check current deck usage for a clan
+- `/rankings <tourny_tag>`: List members' names, scores, and ranks
 
 For a full list of commands, use the `/info` command in Discord after adding the bot to your server.
 
