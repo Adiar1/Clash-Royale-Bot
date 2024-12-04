@@ -6,9 +6,11 @@
     <title>Edit .env</title>
     <style>
         :root {
-            --primary-color: #5865F2;
-            --background-color: #F2F3F5;
-            --text-color: #2C2F33;
+            --primary-color: #7B68EE;
+            --background-dark: #1E133E;
+            --secondary-dark: #2C2541;
+            --text-color: #E0E0E0;
+            --hover-color: #4A3A6D;
         }
         * {
             margin: 0;
@@ -17,15 +19,15 @@
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--background-color);
+            background-color: var(--background-dark);
             color: var(--text-color);
             line-height: 1.6;
             padding: 20px;
         }
         .container {
-            background-color: white;
+            background-color: var(--secondary-dark);
             border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
             padding: 30px;
             max-width: 800px;
             margin: 0 auto;
@@ -46,11 +48,12 @@
         textarea {
             width: 100%;
             padding: 10px;
-            border: 1px solid #E6E6E6;
+            border: 1px solid #4A3A6D;
             border-radius: 6px;
             min-height: 300px;
             font-family: 'Courier New', Courier, monospace;
-            background-color: #F9F9F9;
+            background-color: var(--background-dark);
+            color: var(--text-color);
         }
         .save-button {
             display: block;
@@ -62,10 +65,11 @@
             border-radius: 8px;
             cursor: pointer;
             margin-top: 15px;
-            transition: background-color 0.3s ease;
+            transition: all 0.3s ease;
         }
         .save-button:hover {
-            background-color: #4752C4;
+            background-color: #6A5ACD;
+            transform: scale(1.02);
         }
     </style>
 </head>

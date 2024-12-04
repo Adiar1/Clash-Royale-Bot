@@ -6,9 +6,11 @@
     <title>Database Viewer</title>
     <style>
         :root {
-            --primary-color: #5865F2;
-            --background-color: #F2F3F5;
-            --text-color: #2C2F33;
+            --primary-color: #7B68EE;
+            --background-dark: #1E133E;
+            --secondary-dark: #2C2541;
+            --text-color: #E0E0E0;
+            --hover-color: #4A3A6D;
         }
         * {
             margin: 0;
@@ -17,15 +19,15 @@
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--background-color);
+            background-color: var(--background-dark);
             color: var(--text-color);
             line-height: 1.6;
             padding: 20px;
         }
         .container {
-            background-color: white;
+            background-color: var(--secondary-dark);
             border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
             padding: 30px;
             max-width: 1200px;
             margin: 0 auto;
@@ -50,13 +52,14 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            background-color: white;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            background-color: var(--background-dark);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
         th, td {
-            border: 1px solid #E6E6E6;
+            border: 1px solid var(--hover-color);
             padding: 10px;
             text-align: left;
+            color: var(--text-color);
         }
         th {
             background-color: var(--primary-color);
@@ -64,10 +67,10 @@
             font-weight: 600;
         }
         tr:nth-child(even) {
-            background-color: #F9F9F9;
+            background-color: rgba(42, 37, 65, 0.5);
         }
         tr:hover {
-            background-color: #F0F0F0;
+            background-color: var(--hover-color);
         }
         h2 {
             color: var(--primary-color);

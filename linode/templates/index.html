@@ -6,10 +6,11 @@
     <title>Discord Bot Control Panel</title>
     <style>
         :root {
-            --primary-color: #5865F2;  /* Discord Blurple */
-            --secondary-color: #36393F;
-            --background-color: #F2F3F5;
-            --text-color: #2C2F33;
+            --primary-color: #7B68EE;
+            --background-dark: #1E133E;
+            --secondary-dark: #2C2541;
+            --text-color: #E0E0E0;
+            --hover-color: #4A3A6D;
         }
         * {
             margin: 0;
@@ -18,72 +19,99 @@
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--background-color);
+            background-color: var(--background-dark);
             color: var(--text-color);
-            line-height: 1.6;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            perspective: 1000px;
         }
         .container {
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            padding: 30px;
+            background-color: var(--secondary-dark);
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            padding: 40px;
             width: 100%;
             max-width: 500px;
             text-align: center;
+            transition: transform 0.3s ease;
+        }
+        .container:hover {
+            transform: rotateX(3deg) rotateY(-3deg);
         }
         h1 {
             color: var(--primary-color);
-            margin-bottom: 20px;
-            font-size: 2rem;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            text-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
         }
         .button-group {
             display: flex;
             flex-direction: column;
             gap: 15px;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
         }
         .button {
             background-color: var(--primary-color);
             color: white;
             border: none;
-            padding: 12px 20px;
-            border-radius: 8px;
+            padding: 15px 25px;
+            border-radius: 10px;
             cursor: pointer;
-            font-size: 1rem;
-            transition: background-color 0.3s ease;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
             text-decoration: none;
             display: inline-block;
+            position: relative;
+            overflow: hidden;
+        }
+        .button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(120deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: all 0.3s ease;
+        }
+        .button:hover::before {
+            left: 100%;
         }
         .button:hover {
-            background-color: #4752C4;
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(123, 104, 238, 0.4);
         }
         .button:disabled {
-            background-color: #A1A4AA;
+            background-color: #5A5A5A;
             cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
         .nav-links {
             display: flex;
             justify-content: center;
-            gap: 15px;
+            gap: 20px;
         }
         .nav-links a {
             color: var(--primary-color);
             text-decoration: none;
             font-weight: 600;
-            transition: color 0.3s ease;
+            transition: color 0.3s ease, transform 0.2s ease;
+            padding: 5px 10px;
+            border-radius: 5px;
         }
         .nav-links a:hover {
-            color: #4752C4;
+            color: white;
+            background-color: var(--hover-color);
+            transform: scale(1.1);
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Discord Bot Control Panel</h1>
+        <h1>Discord Bot Control</h1>
         <div class="button-group">
             <form action="/start" method="post">
                 <button type="submit" class="button" {{ "disabled" if bot_running }}>Start Bot</button>
@@ -92,7 +120,7 @@
                 <button type="submit" class="button" {{ "disabled" if not bot_running }}>Stop Bot</button>
             </form>
             <form action="/update" method="post">
-                <button type="submit" class="button">Update Bot (Pull from GitHub)</button>
+                <button type="submit" class="button">Update Bot</button>
             </form>
         </div>
         <div class="nav-links">
