@@ -26,6 +26,7 @@
             align-items: center;
             min-height: 100vh;
             perspective: 1000px;
+            overflow: hidden;
         }
         .container {
             background-color: var(--secondary-dark);
@@ -36,7 +37,8 @@
             max-width: 500px;
             text-align: center;
             transition: transform 0.3s ease;
-            will-change: transform; /* Improve performance */
+            transform-style: preserve-3d;
+            will-change: transform;
         }
         .container:hover {
             transform: none;
@@ -134,16 +136,56 @@
     <script>
         const container = document.getElementById('container');
 
-        container.addEventListener('mousemove', (e) => {
-            const { width, height } = container.getBoundingClientRect();
-            const x = (e.clientX - width / 2) / (width / 2);
-            const y = (e.clientY - height / 2) / (height / 2);
-            container.style.transform = `rotateX(${-y * 10}deg) rotateY(${x * 10}deg)`;
-        });
+        // Improved 3D tilt effect with normalized mouse movement
+        function handleMouseMove(e) {
+            // Get container dimensions and position
+            const rect = container.getBoundingClientRect();
 
-        container.addEventListener('mouseleave', () => {
-            container.style.transform = 'none';
-        });
+            // Calculate mouse position relative to container center
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            // Normalize mouse movement to be consistent across different screen sizes
+            const normalizedX = (e.clientX - centerX) / (rect.width / 2);
+            const normalizedY = (e.clientY - centerY) / (rect.height / 2);
+
+            // Apply tilt with reduced intensity for smoother effect
+            const maxTiltAngle = 15; // Reduced from 20 to 15 for subtler effect
+            const tiltX = normalizedY * -maxTiltAngle;
+            const tiltY = normalizedX * maxTiltAngle;
+
+            // Apply transform with improved smoothness
+            container.style.transform = `
+                perspective(1000px)
+                rotateX(${tiltX}deg)
+                rotateY(${tiltY}deg)
+                scale(1.02)
+            `;
+        }
+
+        // Reset container position when mouse leaves
+        function handleMouseLeave() {
+            container.style.transform = 'perspective(1000px) scale(1)';
+        }
+
+        // Throttle function to improve performance
+        function throttle(func, limit) {
+            let inThrottle;
+            return function() {
+                const args = arguments;
+                const context = this;
+                if (!inThrottle) {
+                    func.apply(context, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            }
+        }
+
+        // Add event listeners with throttling
+        const throttledMouseMove = throttle(handleMouseMove, 16); // ~60fps
+        container.addEventListener('mousemove', throttledMouseMove);
+        container.addEventListener('mouseleave', handleMouseLeave);
     </script>
 </body>
 </html>
