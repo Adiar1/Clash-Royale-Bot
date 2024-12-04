@@ -28,6 +28,42 @@
             perspective: 1000px;
             overflow: hidden;
         }
+        #bubble-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .bubble {
+            position: absolute;
+            background: radial-gradient(circle at 30% 30%, rgba(123, 104, 238, 0.3), rgba(123, 104, 238, 0.1));
+            border: 2px solid rgba(123, 104, 238, 0.2);
+            border-radius: 50%;
+            pointer-events: auto;
+            cursor: pointer;
+            animation: float 8s ease-in infinite;
+        }
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) scale(1);
+            }
+            100% {
+                transform: translateY(-100px) scale(0.8);
+            }
+        }
+        @keyframes pop {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+        }
         .container {
             background-color: var(--secondary-dark);
             border-radius: 15px;
@@ -39,6 +75,8 @@
             transition: transform 0.3s ease;
             transform-style: preserve-3d;
             will-change: transform;
+            position: relative;
+            z-index: 1;
         }
         .container:hover {
             transform: none;
@@ -113,6 +151,7 @@
     </style>
 </head>
 <body>
+    <div id="bubble-container"></div>
     <div class="container" id="container">
         <h1>Discord Bot Control</h1>
         <div class="button-group">
@@ -134,27 +173,19 @@
     </div>
 
     <script>
+        // Container tilt effect
         const container = document.getElementById('container');
 
-        // Improved 3D tilt effect with normalized mouse movement
         function handleMouseMove(e) {
-            // Get container dimensions and position
             const rect = container.getBoundingClientRect();
-
-            // Calculate mouse position relative to container center
             const centerX = rect.left + rect.width / 2;
             const centerY = rect.top + rect.height / 2;
-
-            // Normalize mouse movement to be consistent across different screen sizes
             const normalizedX = (e.clientX - centerX) / (rect.width / 2);
             const normalizedY = (e.clientY - centerY) / (rect.height / 2);
-
-            // Apply tilt with reduced intensity for smoother effect
-            const maxTiltAngle = 15; // Reduced from 20 to 15 for subtler effect
+            const maxTiltAngle = 15;
             const tiltX = normalizedY * -maxTiltAngle;
             const tiltY = normalizedX * maxTiltAngle;
 
-            // Apply transform with improved smoothness
             container.style.transform = `
                 perspective(1000px)
                 rotateX(${tiltX}deg)
@@ -163,12 +194,10 @@
             `;
         }
 
-        // Reset container position when mouse leaves
         function handleMouseLeave() {
             container.style.transform = 'perspective(1000px) scale(1)';
         }
 
-        // Throttle function to improve performance
         function throttle(func, limit) {
             let inThrottle;
             return function() {
@@ -182,10 +211,46 @@
             }
         }
 
-        // Add event listeners with throttling
-        const throttledMouseMove = throttle(handleMouseMove, 16); // ~60fps
+        const throttledMouseMove = throttle(handleMouseMove, 16);
         container.addEventListener('mousemove', throttledMouseMove);
         container.addEventListener('mouseleave', handleMouseLeave);
+
+        // Bubble minigame
+        const bubbleContainer = document.getElementById('bubble-container');
+        let score = 0;
+
+        function createBubble() {
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            const size = Math.random() * 40 + 20;
+            bubble.style.width = size + 'px';
+            bubble.style.height = size + 'px';
+            bubble.style.left = Math.random() * 100 + '%';
+            bubble.style.animationDuration = (Math.random() * 4 + 6) + 's';
+
+            bubble.addEventListener('click', () => {
+                score++;
+                bubble.style.animation = 'pop 0.3s ease-out forwards';
+                setTimeout(() => {
+                    bubble.remove();
+                }, 300);
+            });
+
+            bubbleContainer.appendChild(bubble);
+
+            // Remove bubble after animation
+            bubble.addEventListener('animationend', () => {
+                bubble.remove();
+            });
+        }
+
+        // Create new bubbles periodically
+        setInterval(createBubble, 1000);
+
+        // Initial bubbles
+        for(let i = 0; i < 10; i++) {
+            createBubble();
+        }
     </script>
 </body>
 </html>
