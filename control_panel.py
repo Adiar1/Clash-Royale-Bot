@@ -48,8 +48,17 @@ def start_bot():
 def stop_bot():
     global BOT_PROCESS
     if BOT_PROCESS is not None:
-        os.kill(BOT_PROCESS.pid, signal.SIGTERM)
-        BOT_PROCESS = None
+        # Send SIGTERM to terminate the process
+        BOT_PROCESS.terminate()
+        try:
+            # Wait for the process to terminate
+            BOT_PROCESS.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            # Force kill the process if it doesn't terminate in time
+            BOT_PROCESS.kill()
+            BOT_PROCESS.wait()  # Ensure it's fully stopped
+
+        BOT_PROCESS = None  # Reset the global reference
     return redirect(url_for("index"))
 
 
