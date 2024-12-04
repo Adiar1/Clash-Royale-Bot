@@ -38,11 +38,25 @@ logger = logging.getLogger(__name__)
 # Bot setup
 intents = Intents.default()
 intents.message_content = True
+intents.members = True  # Enable member tracking
 bot = commands.Bot(command_prefix='/', intents=intents, disable_voice=True)
+
 
 @bot.event
 async def on_ready():
     print(f'{bot.user} is now running!')
+
+    # Update bot status to show server and user count
+    num_servers = len(bot.guilds)
+    num_users = sum(guild.member_count for guild in bot.guilds)
+
+    # Set the bot's activity to show server and user count
+    activity = discord.Activity(
+        type=discord.ActivityType.watching,
+        name=f"{num_servers} server{'s' if num_servers != 1 else ''} | {num_users} users"
+    )
+    await bot.change_presence(activity=activity)
+
     await bot.tree.sync()
 
 @bot.tree.command(name="currentwar",
