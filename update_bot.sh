@@ -12,3 +12,5 @@ git pull origin master
 echo "Restarting the bot..."
 source /root/Clash-Royale-Bot
 python3 main.py &
+
+# To use, paste this into the terminal: `./update_bot.sh`
