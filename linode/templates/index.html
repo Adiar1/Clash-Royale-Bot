@@ -28,6 +28,19 @@
             perspective: 1000px;
             overflow: hidden;
         }
+        #score-display {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--text-color);
+            background-color: var(--secondary-dark);
+            padding: 10px 20px;
+            border-radius: 10px;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
         #bubble-container {
             position: fixed;
             top: 0;
@@ -46,6 +59,18 @@
             cursor: pointer;
             animation: float 12s linear infinite;
             transition: transform 0.3s ease;
+        }
+        .bubble.small {
+            width: 30px;
+            height: 30px;
+        }
+        .bubble.medium {
+            width: 60px;
+            height: 60px;
+        }
+        .bubble.large {
+            width: 90px;
+            height: 90px;
         }
         .bubble:hover {
             transform: scale(1.1);
@@ -159,6 +184,7 @@
     </style>
 </head>
 <body>
+    <div id="score-display">Score: 0</div>
     <div id="bubble-container"></div>
     <div class="container" id="container">
         <h1>Discord Bot Control</h1>
@@ -183,6 +209,8 @@
     <script>
         // Container tilt effect
         const container = document.getElementById('container');
+        const scoreDisplay = document.getElementById('score-display');
+        let score = 0;
 
         function handleMouseMove(e) {
             const rect = container.getBoundingClientRect();
@@ -225,24 +253,36 @@
 
         // Bubble minigame
         const bubbleContainer = document.getElementById('bubble-container');
-        let score = 0;
 
         function createBubble() {
             const bubble = document.createElement('div');
             bubble.className = 'bubble';
-            const size = Math.random() * 60 + 40; // Bigger bubbles: 40-100px
-            bubble.style.width = size + 'px';
-            bubble.style.height = size + 'px';
+
+            // Randomly choose bubble size
+            const sizeType = Math.random();
+            let points;
+            if (sizeType < 0.2) { // 20% chance for small
+                bubble.classList.add('small');
+                points = 5;
+            } else if (sizeType < 0.6) { // 40% chance for medium
+                bubble.classList.add('medium');
+                points = 3;
+            } else { // 40% chance for large
+                bubble.classList.add('large');
+                points = 1;
+            }
+
             bubble.style.left = Math.random() * 100 + '%';
-            bubble.style.animationDuration = (Math.random() * 6 + 8) + 's'; // Slower: 8-14s
+            bubble.style.animationDuration = (Math.random() * 6 + 8) + 's';
 
             bubble.addEventListener('click', (e) => {
-                score++;
+                score += points;
+                scoreDisplay.textContent = `Score: ${score}`;
+
                 const rect = bubble.getBoundingClientRect();
                 const bubbleX = rect.left;
                 const bubbleY = rect.top;
 
-                // Create pop effect at click location
                 bubble.style.position = 'fixed';
                 bubble.style.left = bubbleX + 'px';
                 bubble.style.top = bubbleY + 'px';
@@ -255,7 +295,6 @@
 
             bubbleContainer.appendChild(bubble);
 
-            // Remove bubble after float animation
             bubble.addEventListener('animationend', (e) => {
                 if (e.animationName === 'float') {
                     bubble.remove();
@@ -264,10 +303,10 @@
         }
 
         // Create new bubbles periodically
-        setInterval(createBubble, 2000); // Slower spawn rate: every 2s
+        setInterval(createBubble, 2000);
 
         // Initial bubbles
-        for(let i = 0; i < 6; i++) { // Fewer initial bubbles
+        for(let i = 0; i < 6; i++) {
             createBubble();
         }
     </script>
