@@ -1,17 +1,33 @@
-from flask import Flask, render_template, request, redirect, url_for, send_file
+from flask import Flask, render_template, request, redirect, url_for, send_file, abort
 import os
 import subprocess
 import signal
 import sqlite3
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 
-
-BOT_SCRIPT = "/root/Clash-Royale-Bot/main.py"
-BOT_DIR = "/root/Clash-Royale-Bot"
+# Paths
+BOT_SCRIPT = os.path.join(os.getcwd(), "main.py")
+BOT_DIR = os.getcwd()
 ENV_FILE = os.path.join(BOT_DIR, ".env")
 DB_FILE = os.path.join(BOT_DIR, "database.db")
-BOT_PROCESS = None
+TEMPLATES_DIR = os.path.join(BOT_DIR, "linode", "templates")
+
+app.template_folder = TEMPLATES_DIR
+
+BOT_PROCESS = None  # Store the bot process here
+
+
+# Middleware to restrict access based on IP
+@app.before_request
+def limit_remote_addr():
+    allowed_ips = os.getenv("ALLOWED_IPS", "").split(",")
+    if request.remote_addr not in allowed_ips:
+        abort(403)  # Forbidden
 
 
 @app.route("/")
