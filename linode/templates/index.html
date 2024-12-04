@@ -40,6 +40,8 @@
             border-radius: 10px;
             z-index: 100;
             box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            display: none;
+            transition: color 0.5s ease;
         }
         #bubble-container {
             position: fixed;
@@ -211,6 +213,17 @@
         const container = document.getElementById('container');
         const scoreDisplay = document.getElementById('score-display');
         let score = 0;
+        let gameStarted = false;
+        let baseAnimationDuration = 12; // Base duration in seconds
+        let hasClickedBubble = false;
+
+        function updateScoreColor() {
+            const redSteps = Math.min(Math.floor(score / 40), 6);
+            const redComponent = Math.min(224 + (redSteps * 5), 255);
+            const greenComponent = Math.max(224 - (redSteps * 32), 0);
+            const blueComponent = Math.max(224 - (redSteps * 32), 0);
+            scoreDisplay.style.color = `rgb(${redComponent}, ${greenComponent}, ${blueComponent})`;
+        }
 
         function handleMouseMove(e) {
             const rect = container.getBoundingClientRect();
@@ -247,6 +260,11 @@
             }
         }
 
+        function getCurrentAnimationDuration() {
+            const speedMultiplier = Math.min(1 + (Math.floor(score / 40) * 0.2), 2);
+            return baseAnimationDuration / speedMultiplier;
+        }
+
         const throttledMouseMove = throttle(handleMouseMove, 16);
         container.addEventListener('mousemove', throttledMouseMove);
         container.addEventListener('mouseleave', handleMouseLeave);
@@ -273,11 +291,17 @@
             }
 
             bubble.style.left = Math.random() * 100 + '%';
-            bubble.style.animationDuration = (Math.random() * 6 + 8) + 's';
+            bubble.style.animationDuration = `${getCurrentAnimationDuration()}s`;
 
             bubble.addEventListener('click', (e) => {
+                if (!hasClickedBubble) {
+                    hasClickedBubble = true;
+                    scoreDisplay.style.display = 'block';
+                }
+
                 score += points;
                 scoreDisplay.textContent = `Score: ${score}`;
+                updateScoreColor();
 
                 const rect = bubble.getBoundingClientRect();
                 const bubbleX = rect.left;
@@ -297,6 +321,11 @@
 
             bubble.addEventListener('animationend', (e) => {
                 if (e.animationName === 'float') {
+                    if (hasClickedBubble) {
+                        score -= points * 2;
+                        scoreDisplay.textContent = `Score: ${score}`;
+                        updateScoreColor();
+                    }
                     bubble.remove();
                 }
             });
