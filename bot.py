@@ -42,7 +42,7 @@ bot = commands.Bot(command_prefix='/', intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f'{bot.user} is now pooping and peeing!')
+    print(f'{bot.user} is now running!')
     await bot.tree.sync()
 
 @bot.tree.command(name="currentwar",
