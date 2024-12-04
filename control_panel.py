@@ -1,14 +1,16 @@
-from flask import Flask, render_template, request, redirect, url_for, send_file, abort
+from flask import Flask, render_template, request, redirect, url_for, send_file, abort, session
 import os
 import subprocess
 import signal
 import sqlite3
 from dotenv import load_dotenv
+from functools import wraps
 
 # Load environment variables from .env file
 load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = os.urandom(24)  # Set a secret key for session management
 
 # Paths
 BOT_SCRIPT = os.path.join(os.getcwd(), "main.py")
@@ -21,21 +23,38 @@ app.template_folder = TEMPLATES_DIR
 
 BOT_PROCESS = None  # Store the bot process here
 
+# Password protection
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('logged_in'):
+            return redirect(url_for('login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
 
-# Middleware to restrict access based on IP
-@app.before_request
-def limit_remote_addr():
-    allowed_ips = os.getenv("ALLOWED_IPS", "").split(",")
-    if request.remote_addr not in allowed_ips:
-        abort(403)  # Forbidden
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        password = request.form['password']
+        if password == os.getenv('ADMIN_PASSWORD'):
+            session['logged_in'] = True
+            return redirect(request.args.get('next') or url_for('index'))
+        else:
+            return 'Invalid password'
+    return render_template('login.html')
 
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    return redirect(url_for('login'))
 
 @app.route("/")
+@login_required
 def index():
     return render_template("index.html", bot_running=(BOT_PROCESS is not None))
 
-
 @app.route("/start", methods=["POST"])
+@login_required
 def start_bot():
     global BOT_PROCESS
     if BOT_PROCESS is None:
@@ -43,8 +62,8 @@ def start_bot():
         return redirect(url_for("index"))
     return "Bot is already running. <a href='/'>Go back</a>"
 
-
 @app.route("/stop", methods=["POST"])
+@login_required
 def stop_bot():
     global BOT_PROCESS
     if BOT_PROCESS is not None:
@@ -61,8 +80,8 @@ def stop_bot():
         BOT_PROCESS = None  # Reset the global reference
     return redirect(url_for("index"))
 
-
 @app.route("/update", methods=["POST"])
+@login_required
 def update_files():
     try:
         subprocess.run(["git", "-C", BOT_DIR, "pull"], check=True)
@@ -70,8 +89,8 @@ def update_files():
     except subprocess.CalledProcessError:
         return "Failed to update the bot. <a href='/'>Go back</a>"
 
-
 @app.route("/files")
+@login_required
 def file_viewer():
     def list_files(directory):
         items = []
@@ -93,8 +112,8 @@ def file_viewer():
         return send_file(full_path)
     return "Invalid path. <a href='/files'>Go back</a>"
 
-
 @app.route("/edit_env", methods=["GET", "POST"])
+@login_required
 def edit_env():
     if request.method == "POST":
         new_content = request.form["env_content"]
@@ -105,8 +124,8 @@ def edit_env():
         env_content = f.read()
     return render_template("edit_env.html", env_content=env_content)
 
-
 @app.route("/database")
+@login_required
 def view_database():
     try:
         conn = sqlite3.connect(DB_FILE)
@@ -127,7 +146,6 @@ def view_database():
         return render_template("database.html", database_data=database_data)
     except Exception as e:
         return f"Error reading database: {e}"
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
