@@ -1,21 +1,90 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>File Viewer</title>
+    <style>
+        :root {
+            --primary-color: #5865F2;
+            --background-color: #F2F3F5;
+            --text-color: #2C2F33;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+        }
+        .container {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .back-link {
+            display: block;
+            text-align: center;
+            color: var(--primary-color);
+            text-decoration: none;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        .file-list {
+            list-style-type: none;
+        }
+        .file-list li {
+            background-color: #F9F9F9;
+            border: 1px solid #E6E6E6;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 6px;
+            transition: background-color 0.3s ease;
+        }
+        .file-list li:hover {
+            background-color: #F0F0F0;
+        }
+        .file-list a {
+            color: var(--text-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .file-list a:hover {
+            color: var(--primary-color);
+        }
+        .directory {
+            color: var(--primary-color);
+        }
+    </style>
 </head>
 <body>
-    <h1>File Viewer</h1>
-    <a href="/">Go Back</a>
-    <ul>
-        {% for file in files %}
-            <li>
-                {% if file.is_dir %}
-                    <a href="/files?dir={{ current_dir }}/{{ file.name }}">{{ file.name }}/</a>
-                {% else %}
-                    <a href="/files?dir={{ current_dir }}/{{ file.name }}">{{ file.name }}</a>
-                {% endif %}
-            </li>
-        {% endfor %}
-    </ul>
+    <div class="container">
+        <h1>File Viewer</h1>
+        <a href="/" class="back-link">Go Back</a>
+        <ul class="file-list">
+            {% for file in files %}
+                <li>
+                    {% if file.is_dir %}
+                        <a href="/files?dir={{ current_dir }}/{{ file.name }}" class="directory">{{ file.name }}/</a>
+                    {% else %}
+                        <a href="/files?dir={{ current_dir }}/{{ file.name }}">{{ file.name }}</a>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
 </body>
 </html>

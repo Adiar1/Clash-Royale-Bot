@@ -1,26 +1,105 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Control Panel</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Bot Control Panel</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        button { margin: 5px; padding: 10px 20px; font-size: 16px; cursor: pointer; }
-        a { text-decoration: none; color: blue; }
+        :root {
+            --primary-color: #5865F2;  /* Discord Blurple */
+            --secondary-color: #36393F;
+            --background-color: #F2F3F5;
+            --text-color: #2C2F33;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            font-size: 2rem;
+        }
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button:hover {
+            background-color: #4752C4;
+        }
+        .button:disabled {
+            background-color: #A1A4AA;
+            cursor: not-allowed;
+        }
+        .nav-links {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        .nav-links a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+        .nav-links a:hover {
+            color: #4752C4;
+        }
     </style>
 </head>
 <body>
-    <h1>Discord Bot Control Panel</h1>
-    <form action="/start" method="post">
-        <button type="submit" {{ "disabled" if bot_running }}>Start Bot</button>
-    </form>
-    <form action="/stop" method="post">
-        <button type="submit" {{ "disabled" if not bot_running }}>Stop Bot</button>
-    </form>
-    <form action="/update" method="post">
-        <button type="submit">Update Bot (Pull from GitHub)</button>
-    </form>
-    <a href="/files">View Files</a> |
-    <a href="/edit_env">Edit .env</a> |
-    <a href="/database">View Database</a>
+    <div class="container">
+        <h1>Discord Bot Control Panel</h1>
+        <div class="button-group">
+            <form action="/start" method="post">
+                <button type="submit" class="button" {{ "disabled" if bot_running }}>Start Bot</button>
+            </form>
+            <form action="/stop" method="post">
+                <button type="submit" class="button" {{ "disabled" if not bot_running }}>Stop Bot</button>
+            </form>
+            <form action="/update" method="post">
+                <button type="submit" class="button">Update Bot (Pull from GitHub)</button>
+            </form>
+        </div>
+        <div class="nav-links">
+            <a href="/files">View Files</a>
+            <a href="/edit_env">Edit .env</a>
+            <a href="/database">View Database</a>
+        </div>
+    </div>
 </body>
 </html>
