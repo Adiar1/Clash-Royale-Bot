@@ -36,9 +36,10 @@
             max-width: 500px;
             text-align: center;
             transition: transform 0.3s ease;
+            will-change: transform; /* Improve performance */
         }
         .container:hover {
-            transform: rotateX(3deg) rotateY(-3deg);
+            transform: none;
         }
         h1 {
             color: var(--primary-color);
@@ -110,7 +111,7 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container" id="container">
         <h1>Discord Bot Control</h1>
         <div class="button-group">
             <form action="/start" method="post">
@@ -129,5 +130,20 @@
             <a href="/database">View Database</a>
         </div>
     </div>
+
+    <script>
+        const container = document.getElementById('container');
+
+        container.addEventListener('mousemove', (e) => {
+            const { width, height } = container.getBoundingClientRect();
+            const x = (e.clientX - width / 2) / (width / 2);
+            const y = (e.clientY - height / 2) / (height / 2);
+            container.style.transform = `rotateX(${y * 10}deg) rotateY(${x * 10}deg)`;
+        });
+
+        container.addEventListener('mouseleave', () => {
+            container.style.transform = 'none';
+        });
+    </script>
 </body>
 </html>
