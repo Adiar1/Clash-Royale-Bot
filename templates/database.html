@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Database Viewer</title>
+</head>
+<body>
+    <h1>Database Viewer</h1>
+    <a href="/">Go Back</a>
+    {% for table in database_data %}
+        <h2>Table: {{ table.table_name }}</h2>
+        <table border="1">
+            <tr>
+                {% for column in table.columns %}
+                    <th>{{ column }}</th>
+                {% endfor %}
+            </tr>
+            {% for row in table.rows %}
+                <tr>
+                    {% for cell in row %}
+                        <td>{{ cell }}</td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </table>
+    {% endfor %}
+</body>
+</html>
