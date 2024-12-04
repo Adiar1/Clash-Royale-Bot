@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 # Bot setup
 intents = Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix='/', intents=intents)
+bot = commands.Bot(command_prefix='/', intents=intents, disable_voice=True)
 
 @bot.event
 async def on_ready():
