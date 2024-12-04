@@ -26,7 +26,7 @@ CW2_EMOJI = "<:cw2:1259911002594742332>"
 CC_EMOJI = "<:classicwin:1259902085990715482>"
 GC_EMOJI = "<:grandwin:1259902048279859210>"
 
-DEFAULT_WAR_DATA_ORDER: Final[str] = 'fame_name_decks'
+DEFAULT_WAR_DATA_ORDER: Final[str] = 'fame_decks_name'
 DEFAULT_WAR_LISTING_ORDER: Final[str] = 'fame_desc'
 DEFAULT_LISTING_ORDER = "tag_asc"
 DEFAULT_DATA_ORDER = "tag_name_role"
