@@ -11,6 +11,7 @@
             --secondary-dark: #2C2541;
             --text-color: #E0E0E0;
             --hover-color: #4A3A6D;
+            --arrow-size: 12px;
         }
         * {
             margin: 0;
@@ -55,27 +56,45 @@
         }
         .file-tree li {
             position: relative;
-            padding: 5px 0;
+            padding: 5px 0 5px 20px;
+            cursor: pointer;
         }
-        .file-tree li::before {
-            content: '▶';
+        .arrow {
             position: absolute;
-            left: -15px;
-            top: 5px;
-            color: var(--text-color);
-            font-size: 10px;
+            left: 0;
+            top: 8px;
+            width: var(--arrow-size);
+            height: var(--arrow-size);
+            cursor: pointer;
             transition: transform 0.2s ease;
+            display: inline-block;
         }
-        .file-tree li.expanded::before {
-            transform: rotate(90deg);
+        .arrow::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 0;
+            height: 0;
+            border-left: calc(var(--arrow-size) / 2) solid var(--text-color);
+            border-top: calc(var(--arrow-size) / 3) solid transparent;
+            border-bottom: calc(var(--arrow-size) / 3) solid transparent;
+            transform: translate(-25%, -50%);
+        }
+        .expanded > .arrow::before {
+            transform: translate(-50%, -50%) rotate(90deg);
         }
         .file-tree a {
             color: var(--text-color);
             text-decoration: none;
             transition: color 0.3s ease;
+            display: inline-block;
+            padding: 2px 5px;
+            border-radius: 3px;
         }
         .file-tree a:hover {
             color: var(--primary-color);
+            background-color: var(--hover-color);
         }
         .directory > a {
             font-weight: bold;
@@ -84,8 +103,29 @@
         .file {
             opacity: 0.8;
         }
+        .file .arrow {
+            display: none;
+        }
         .hidden {
             display: none;
+        }
+        /* File icons */
+        .file::before,
+        .directory::before {
+            content: '';
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            margin-right: 5px;
+            vertical-align: middle;
+            background-size: contain;
+            background-repeat: no-repeat;
+        }
+        .directory::before {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%237B68EE'%3E%3Cpath d='M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z'/%3E%3C/svg%3E");
+        }
+        .file::before {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23E0E0E0'%3E%3Cpath d='M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2z'/%3E%3C/svg%3E");
         }
     </style>
 </head>
@@ -99,7 +139,6 @@
     </div>
 
     <script>
-        // Organize files into a hierarchical structure
         function organizeFiles(files) {
             const tree = {};
 
@@ -131,9 +170,9 @@
 
         function renderTree(tree, parentEl, currentDir = '') {
             const ul = document.createElement('ul');
+            ul.classList.add('hidden');
 
             Object.keys(tree).sort((a, b) => {
-                // Directories first, then files
                 const aIsDir = tree[a].isDir;
                 const bIsDir = tree[b].isDir;
                 return aIsDir === bIsDir ? a.localeCompare(b) : aIsDir ? -1 : 1;
@@ -142,10 +181,14 @@
                 const li = document.createElement('li');
                 li.classList.add(item.isDir ? 'directory' : 'file');
 
+                const arrow = document.createElement('span');
+                arrow.classList.add('arrow');
+                li.appendChild(arrow);
+
                 const fullPath = currentDir ? `${currentDir}/${key}` : key;
                 const link = document.createElement('a');
                 link.href = `/files?dir=${fullPath}`;
-                link.textContent = key + (item.isDir ? '/' : '');
+                link.textContent = key + (item.isDir ? '' : '');
 
                 li.appendChild(link);
 
@@ -156,6 +199,11 @@
 
                 ul.appendChild(li);
             });
+
+            // Show first level by default
+            if (currentDir === '') {
+                ul.classList.remove('hidden');
+            }
 
             parentEl.appendChild(ul);
         }
@@ -176,10 +224,16 @@
 
             // Toggle directory expansion
             fileTree.addEventListener('click', (e) => {
-                const target = e.target.closest('.directory');
-                if (target && target.classList.contains('expandable')) {
-                    target.classList.toggle('expanded');
-                    const childUl = target.querySelector('ul');
+                const li = e.target.closest('li');
+                if (!li) return;
+
+                const isArrowClick = e.target.classList.contains('arrow');
+                const isDirectoryClick = li.classList.contains('directory');
+
+                if ((isArrowClick || isDirectoryClick) && li.classList.contains('expandable')) {
+                    e.preventDefault();
+                    li.classList.toggle('expanded');
+                    const childUl = li.querySelector('ul');
                     if (childUl) {
                         childUl.classList.toggle('hidden');
                     }
