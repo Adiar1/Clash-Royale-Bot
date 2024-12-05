@@ -134,52 +134,55 @@
             flex-direction: column;
             gap: 15px;
             margin-bottom: 30px;
+            align-items: center;
         }
-        .toggle-switch {
-            position: relative;
-            display: inline-block;
-            width: 120px;
-            height: 60px;
-            margin: 0 auto;
-        }
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-        .toggle-slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #5A5A5A;
-            transition: .4s;
-            border-radius: 34px;
-        }
-        .toggle-slider:before {
-            position: absolute;
-            content: "";
-            height: 52px;
-            width: 52px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-        .toggle-switch input:checked + .toggle-slider {
-            background-color: var(--primary-color);
-        }
-        .toggle-switch input:checked + .toggle-slider:before {
-            transform: translateX(60px);
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
         .toggle-label {
-            display: block;
-            margin-top: 10px;
-            font-size: 1rem;
             color: var(--text-color);
+            font-size: 1.1rem;
+        }
+        .toggle {
+            position: relative;
+            width: 80px;
+            height: 40px;
+            background-color: #474747;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .toggle::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 4px;
+            transform: translateY(-50%);
+            width: 32px;
+            height: 32px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.3s ease, background-color 0.3s ease;
+        }
+        .toggle.active {
+            background-color: var(--primary-color);
+        }
+        .toggle.active::before {
+            transform: translate(40px, -50%);
+            background-color: white;
+        }
+        .toggle-button {
+            appearance: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            cursor: pointer;
+            z-index: 1;
         }
         .update-button {
             background-color: var(--primary-color);
@@ -194,7 +197,6 @@
             display: inline-block;
             position: relative;
             overflow: hidden;
-            margin-top: 15px;
         }
         .update-button::before {
             content: '';
@@ -239,13 +241,12 @@
     <div class="container" id="container">
         <h1>Discord Bot Control</h1>
         <div class="button-group">
-            <form action="/toggle" method="post">
-                <label class="toggle-switch">
-                    <input type="checkbox" name="bot_state" {{ "checked" if bot_running }}>
-                    <span class="toggle-slider"></span>
-                </label>
-                <span class="toggle-label">{{ "Bot Running" if bot_running else "Bot Stopped" }}</span>
-            </form>
+            <div class="toggle-container">
+                <span class="toggle-label">Bot Status</span>
+                <div class="toggle {{ 'active' if bot_running else '' }}" id="bot-toggle">
+                    <input type="checkbox" class="toggle-button" id="toggle-button" {{ "checked" if bot_running else "" }}>
+                </div>
+            </div>
             <form action="/update" method="post">
                 <button type="submit" class="update-button">Update Bot</button>
             </form>
@@ -261,18 +262,21 @@
         // Container tilt effect
         const container = document.getElementById('container');
         const scoreDisplay = document.getElementById('score-display');
-        const botToggle = document.querySelector('.toggle-switch input');
-        const toggleLabel = document.querySelector('.toggle-label');
+        const toggleButton = document.getElementById('toggle-button');
+        const botToggle = document.getElementById('bot-toggle');
         let score = 0;
         let gameStarted = false;
         let baseAnimationDuration = 12; // Base duration in seconds
         let hasClickedBubble = false;
         let isWKeyDown = false;
 
-        // Add event listener to toggle switch
-        botToggle.addEventListener('change', function() {
-            // You might want to add AJAX here to handle the toggle without page reload
-            this.closest('form').submit();
+        // Toggle functionality
+        toggleButton.addEventListener('change', () => {
+            const form = document.createElement('form');
+            form.method = 'post';
+            form.action = toggleButton.checked ? '/start' : '/stop';
+            document.body.appendChild(form);
+            form.submit();
         });
 
         function updateScoreColor() {
