@@ -62,7 +62,8 @@
         .arrow {
             position: absolute;
             left: 0;
-            top: 8px;
+            top: 50%;
+            transform: translateY(-50%);
             width: var(--arrow-size);
             height: var(--arrow-size);
             cursor: pointer;
@@ -79,7 +80,7 @@
             border-left: calc(var(--arrow-size) / 2) solid var(--text-color);
             border-top: calc(var(--arrow-size) / 3) solid transparent;
             border-bottom: calc(var(--arrow-size) / 3) solid transparent;
-            transform: translate(-25%, -50%);
+            transform: translate(-50%, -50%);
         }
         .expanded > .arrow::before {
             transform: translate(-50%, -50%) rotate(90deg);
@@ -157,10 +158,6 @@
                         };
                     }
 
-                    if (isLastPart) {
-                        current[part].isDir = file.is_dir;
-                    }
-
                     current = current[part].children;
                 });
             });
@@ -168,75 +165,60 @@
             return tree;
         }
 
-        function renderTree(tree, parentEl, currentDir = '') {
+        function renderTree(tree, parentEl) {
             const ul = document.createElement('ul');
-            ul.classList.add('hidden');
 
-            Object.keys(tree).sort((a, b) => {
-                const aIsDir = tree[a].isDir;
-                const bIsDir = tree[b].isDir;
-                return aIsDir === bIsDir ? a.localeCompare(b) : aIsDir ? -1 : 1;
-            }).forEach(key => {
+            Object.keys(tree).forEach(key => {
                 const item = tree[key];
                 const li = document.createElement('li');
                 li.classList.add(item.isDir ? 'directory' : 'file');
 
                 const arrow = document.createElement('span');
                 arrow.classList.add('arrow');
-                li.appendChild(arrow);
 
-                const fullPath = currentDir ? `${currentDir}/${key}` : key;
+                if (item.isDir) {
+                    li.appendChild(arrow);
+                }
+
                 const link = document.createElement('a');
-                link.href = `/files?dir=${fullPath}`;
-                link.textContent = key + (item.isDir ? '' : '');
-
+                link.textContent = key;
+                link.href = '#'; // Prevent navigation
                 li.appendChild(link);
 
-                if (item.isDir && Object.keys(item.children).length > 0) {
+                if (item.isDir) {
+                    renderTree(item.children, li);
                     li.classList.add('expandable');
-                    renderTree(item.children, li, fullPath);
                 }
 
                 ul.appendChild(li);
             });
-
-            // Show first level by default
-            if (currentDir === '') {
-                ul.classList.remove('hidden');
-            }
 
             parentEl.appendChild(ul);
         }
 
         document.addEventListener('DOMContentLoaded', () => {
             const files = [
-                {% for file in files %}
-                {
-                    name: "{{ file.name }}",
-                    is_dir: {{ 'true' if file.is_dir else 'false' }}
-                },
-                {% endfor %}
+                { name: 'src/index.html', is_dir: false },
+                { name: 'src/styles.css', is_dir: false },
+                { name: 'src/scripts/app.js', is_dir: false },
+                { name: 'src/scripts/utils.js', is_dir: false },
+                { name: 'assets/images/logo.png', is_dir: false },
+                { name: 'assets/fonts', is_dir: true },
+                { name: 'README.md', is_dir: false },
             ];
 
             const fileTree = document.getElementById('fileTree');
             const organizedFiles = organizeFiles(files);
             renderTree(organizedFiles, fileTree);
 
-            // Toggle directory expansion
-            fileTree.addEventListener('click', (e) => {
+            fileTree.addEventListener('click', e => {
                 const li = e.target.closest('li');
-                if (!li) return;
+                if (!li || !li.classList.contains('directory')) return;
 
-                const isArrowClick = e.target.classList.contains('arrow');
-                const isDirectoryClick = li.classList.contains('directory');
-
-                if ((isArrowClick || isDirectoryClick) && li.classList.contains('expandable')) {
-                    e.preventDefault();
+                const ul = li.querySelector('ul');
+                if (ul) {
+                    ul.classList.toggle('hidden');
                     li.classList.toggle('expanded');
-                    const childUl = li.querySelector('ul');
-                    if (childUl) {
-                        childUl.classList.toggle('hidden');
-                    }
                 }
             });
         });
