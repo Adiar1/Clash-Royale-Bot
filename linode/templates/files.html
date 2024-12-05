@@ -26,7 +26,7 @@
             background-color: var(--background-dark);
             color: var(--text-color);
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
             min-height: 100vh;
             perspective: 1000px;
@@ -52,12 +52,25 @@
             font-size: 2.5rem;
             text-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
         }
-        .current-path {
-            color: var(--primary-color);
+        .breadcrumbs {
+            display: flex;
+            align-items: center;
+            justify-content: center;
             margin-bottom: 20px;
-            font-size: 1.2rem;
-            opacity: 0.8;
-            word-break: break-all;
+        }
+        .breadcrumbs a {
+            color: var(--primary-color);
+            text-decoration: none;
+            transition: color 0.3s ease;
+            padding: 5px 10px;
+        }
+        .breadcrumbs a:hover {
+            color: var(--text-color);
+        }
+        .breadcrumbs a:not(:last-child)::after {
+            content: "/";
+            color: var(--primary-color);
+            margin: 0 5px;
         }
         .file-list {
             text-align: left;
@@ -102,32 +115,6 @@
             font-weight: 600;
             opacity: 0.8;
         }
-        .nav-link {
-            color: var(--primary-color);
-            text-decoration: none;
-            padding: 10px 15px;
-            background-color: var(--background-dark);
-            border-radius: 5px;
-            transition: all 0.3s ease;
-            display: inline-block;
-            margin-top: 20px;
-        }
-        .nav-link:hover {
-            background-color: var(--hover-color);
-            transform: scale(1.1);
-        }
-        .back-link {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: var(--primary-color);
-            text-decoration: none;
-            font-weight: bold;
-            transition: transform 0.3s ease;
-        }
-        .back-link:hover {
-            transform: scale(1.1);
-        }
         /* Scrollbar styling */
         .file-list::-webkit-scrollbar {
             width: 10px;
@@ -143,9 +130,13 @@
 </head>
 <body>
     <div class="container">
-        <a href="/" class="back-link">← Back to Dashboard</a>
         <h1>File Explorer</h1>
-        <div class="current-path">Current Path: {{ current_dir or '/' }}</div>
+        <div class="breadcrumbs">
+            <a href="/">Home</a>
+            {% for dir in current_dir.split('/') %}
+                <a href="/files?dir={{ '/'.join(current_dir.split('/')[0:loop.index+1]) }}">{{ dir }}</a>
+            {% endfor %}
+        </div>
 
         <div class="file-list">
             {% for file in files %}
