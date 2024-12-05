@@ -129,78 +129,87 @@
             font-size: 2.5rem;
             text-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
         }
-        .toggle-wrapper {
+        .button-group {
             display: flex;
-            justify-content: center;
-            align-items: center;
+            flex-direction: column;
+            gap: 15px;
             margin-bottom: 30px;
-        }
-        .toggle-container {
-            position: relative;
-            width: 200px;
-            height: 70px;
-            background-color: #333;
-            border-radius: 35px;
-            cursor: pointer;
-            display: flex;
             align-items: center;
-            transition: all 0.3s ease;
-            overflow: hidden;
-            box-shadow: 0 0 10px rgba(0,0,0,0.2);
         }
-        .toggle-container::before {
-            content: 'START';
-            position: absolute;
-            left: 15px;
-            color: white;
-            font-weight: bold;
-            transition: opacity 0.3s ease;
-            opacity: 1;
-        }
-        .toggle-container::after {
-            content: 'STOP';
-            position: absolute;
-            right: 15px;
-            color: white;
-            font-weight: bold;
-            transition: opacity 0.3s ease;
-            opacity: 0;
-        }
+        /* Toggle Switch Styles */
         .toggle-switch {
-            position: absolute;
-            width: 60px;
+            position: relative;
+            display: inline-block;
+            width: 120px;
             height: 60px;
-            background-color: var(--primary-color);
-            border-radius: 50%;
-            left: 5px;
-            transition: all 0.3s ease;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
         }
-        .toggle-switch::before {
-            content: '▶';
-            color: white;
-            font-size: 20px;
-            transition: transform 0.3s ease;
-        }
-        .toggle-container.active {
-            background-color: #2A2A2A;
-        }
-        .toggle-container.active::before {
+        .toggle-switch input {
             opacity: 0;
+            width: 0;
+            height: 0;
         }
-        .toggle-container.active::after {
-            opacity: 1;
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #5A5A5A;
+            transition: .4s;
+            border-radius: 34px;
         }
-        .toggle-container.active .toggle-switch {
-            left: calc(100% - 65px);
-            background-color: #FF4136;
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 48px;
+            width: 48px;
+            left: 6px;
+            bottom: 6px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
         }
-        .toggle-container.active .toggle-switch::before {
-            content: '■';
-            transform: scale(0.8);
+        .toggle-switch input:checked + .toggle-slider {
+            background-color: var(--primary-color);
+        }
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(60px);
+        }
+        .toggle-switch input:disabled + .toggle-slider {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .update-button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            position: relative;
+            overflow: hidden;
+        }
+        .update-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(120deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: all 0.3s ease;
+        }
+        .update-button:hover::before {
+            left: 100%;
+        }
+        .update-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(123, 104, 238, 0.4);
         }
         .nav-links {
             display: flex;
@@ -227,10 +236,16 @@
     <div id="bubble-container"></div>
     <div class="container" id="container">
         <h1>Discord Bot Control</h1>
-        <div class="toggle-wrapper">
-            <div class="toggle-container" id="bot-toggle">
-                <div class="toggle-switch"></div>
-            </div>
+        <div class="button-group">
+            <form id="bot-toggle-form" action="/toggle" method="post">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="bot-toggle" name="bot_status" {{ "checked" if bot_running }}>
+                    <span class="toggle-slider"></span>
+                </label>
+            </form>
+            <form action="/update" method="post" class="mt-4">
+                <button type="submit" class="update-button">Update Bot</button>
+            </form>
         </div>
         <div class="nav-links">
             <a href="/files">View Files</a>
@@ -249,7 +264,12 @@
         let baseAnimationDuration = 12; // Base duration in seconds
         let hasClickedBubble = false;
         let isWKeyDown = false;
-        let botRunning = false;
+
+        // Add event listener to toggle switch
+        botToggle.addEventListener('change', function() {
+            const form = document.getElementById('bot-toggle-form');
+            form.submit();
+        });
 
         function updateScoreColor() {
             const redSteps = Math.min(Math.floor(score / 40), 6);
@@ -258,28 +278,6 @@
             const blueComponent = Math.max(224 - (redSteps * 32), 0);
             scoreDisplay.style.color = `rgb(${redComponent}, ${greenComponent}, ${blueComponent})`;
         }
-
-        // Toggle switch functionality
-        botToggle.addEventListener('click', () => {
-            botRunning = !botRunning;
-            botToggle.classList.toggle('active', botRunning);
-
-            // Send request to start or stop bot
-            fetch(botRunning ? '/start' : '/stop', { method: 'POST' })
-                .then(response => {
-                    if (!response.ok) {
-                        // Revert toggle if request fails
-                        botRunning = !botRunning;
-                        botToggle.classList.toggle('active', botRunning);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    // Revert toggle if request fails
-                    botRunning = !botRunning;
-                    botToggle.classList.toggle('active', botRunning);
-                });
-        });
 
         function handleMouseMove(e) {
             if (isWKeyDown) return; // Prevent tilt when W key is held
