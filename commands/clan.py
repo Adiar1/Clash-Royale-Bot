@@ -31,8 +31,10 @@ class SelectDataOrder(Select):
             interaction,
             f"/{self.command_type} {clan_tag}",
             arrange_listing_order=self._view.arrange_listing_order,
-            arrange_data_order=self._view.arrange_data_order
+            arrange_data_order=self._view.arrange_data_order,
+            edit_mode=True
         )
+
 
 class SelectListingOrder(Select):
     OPTIONS = [
@@ -58,8 +60,10 @@ class SelectListingOrder(Select):
             interaction,
             f"/{self.command_type} {clan_tag}",
             arrange_listing_order=self._view.arrange_listing_order,
-            arrange_data_order=self._view.arrange_data_order
+            arrange_data_order=self._view.arrange_data_order,
+            edit_mode=True
         )
+
 
 class DownloadCSVButton(Button):
     def __init__(self, members_with_info, order):
@@ -94,9 +98,11 @@ class DownloadCSVButton(Button):
         else:
             return ""
 
+
 async def handle_clan_command(bot, interaction: Interaction, user_message: str,
                               arrange_listing_order: str = "name_asc",
-                              arrange_data_order: str = "name_weeks_fame") -> None:
+                              arrange_data_order: str = "name_weeks_fame",
+                              edit_mode: bool = False) -> None:
     parts = user_message.split()
     input_value = parts[1].lstrip('#')
 
@@ -113,7 +119,8 @@ async def handle_clan_command(bot, interaction: Interaction, user_message: str,
         return
 
     try:
-        await interaction.response.defer()
+        if not edit_mode:
+            await interaction.response.defer()
 
         # Fetch current clan members and their data
         member_weeks = await get_weeks_ago_joined(clan_tag)
@@ -198,7 +205,10 @@ async def handle_clan_command(bot, interaction: Interaction, user_message: str,
         view.add_item(SelectDataOrder("clan", handle_clan_command, view))
         view.add_item(DownloadCSVButton(members_with_info, order))
 
-        await interaction.followup.send(embed=embed, view=view)
+        if edit_mode:
+            await interaction.response.edit_message(embed=embed, view=view)
+        else:
+            await interaction.followup.send(embed=embed, view=view)
 
     except Exception as e:
         print(f"Error handling clan command: {e}")
