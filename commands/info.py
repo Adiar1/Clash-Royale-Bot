@@ -47,7 +47,7 @@ async def handle_info_command(interaction: Interaction) -> None:
         value="""
 - `/viewnicks` - View clan nicknames in this server
 - `/nicklink [clan_tag] [nickname]` - Link clan tag to nickname
-- `/reminders [channel] [clan_tag]` - Set up deck usage reminders
+- `/reminders [channel] [clan_tag]` - Ping member with less than 4 decks used
 - `/editperms` - Edit privileged roles
 - `/editmemberroles` - Edit roles for clan roles
 - `/viewmemberroles` - View roles for clan roles
@@ -60,6 +60,7 @@ async def handle_info_command(interaction: Interaction) -> None:
         name="📊 Advanced Features",
         value="""
 - `/whotokick [clan_tag] [n]` - Get recommendations for kicking members
+- `/whotopromote [clan_tag] [n]` - Get recommendations for promoting members
         """,
         inline=False
     )
@@ -88,11 +89,12 @@ async def handle_info_command(interaction: Interaction) -> None:
         inline=False
     )
 
+    adiar_user = await interaction.client.fetch_user(880093108153495563)
+
     embed.set_footer(
         text="For support or suggestions, contact @adiar.",
-        icon_url="https://cdn.discordapp.com/emojis/1259911930802343959.webp?size=96&quality=lossless"
+        icon_url=adiar_user.display_avatar.url
     )
-
     view = discord.ui.View()
     view.add_item(discord.ui.Button(
         label="Contact Developer",
