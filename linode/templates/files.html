@@ -17,6 +17,10 @@
             padding: 0;
             box-sizing: border-box;
         }
+        html, body {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--background-dark);
@@ -26,7 +30,6 @@
             align-items: center;
             min-height: 100vh;
             perspective: 1000px;
-            overflow-x: hidden;
         }
         .container {
             background-color: var(--secondary-dark);
@@ -41,6 +44,7 @@
             will-change: transform;
             position: relative;
             z-index: 1;
+            margin: 20px;
         }
         h1 {
             color: var(--primary-color);
@@ -53,11 +57,14 @@
             margin-bottom: 20px;
             font-size: 1.2rem;
             opacity: 0.8;
+            word-break: break-all;
         }
         .file-list {
             text-align: left;
             max-height: 500px;
             overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 10px;
         }
         .file-item {
             display: flex;
@@ -69,6 +76,7 @@
             margin-bottom: 10px;
             transition: all 0.3s ease;
             text-decoration: none;
+            width: 100%;
         }
         .file-item:hover {
             background-color: var(--hover-color);
@@ -80,10 +88,14 @@
             gap: 15px;
             color: var(--text-color);
             font-size: 1rem;
+            max-width: 70%;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .file-icon {
             width: 24px;
             height: 24px;
+            flex-shrink: 0;
         }
         .file-action {
             color: var(--primary-color);
@@ -151,8 +163,8 @@
                     <a href="/files?dir={{ file.path }}" class="file-item">
                         <div class="file-name">
                             {% if file.name.endswith('.py') %}
-                                <svg class="file-icon" viewBox="0 0 24 24" fill="var(--primary-color)">
-                                    <path d="M14.31 16.38c-.93.63-2.21 1-3.81 1h-1v-3h1c1.32 0 2.23.33 2.72 1 .51.67.59 1.46.09 2zm1.45-6.38c-.47-.67-1.21-1-2.22-1h-1v3h1c1.03 0 1.77-.33 2.22-1 .46-.67.46-1.33 0-2zM20 4v16c0 1.1-.9 2-2 2H6c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h12c1.1 0 2 .9 2 2zm-5.31 8.38c.5-.67.59-1.46.09-2-.46-.67-1.21-1-2.22-1h-3v6h3c1 0 1.76-.33 2.22-1zM12 10V8h3V6h-3V4H9.5v2h-3v2h3v2h-3v2h3v2h2.5v-2h3v-2h-3z"/>
+                                <svg class="file-icon" viewBox="0 0 24 24" fill="#3776AB">
+                                    <path d="M14.25 2.88l-.43.26a1.5 1.5 0 0 0-.68 1.285v2.565a1.5 1.5 0 0 0 1.5 1.5h2.5a1.5 1.5 0 0 0 1.5-1.5V4.414c0-.398-.158-.78-.44-1.06l-1-1a1.5 1.5 0 0 0-1.06-.44H14.25zm-.75 5.89V8a.5.5 0 0 1-.5.5H11V7h2.25a.5.5 0 0 0 .5-.5V4.5a.5.5 0 0 0-.5-.5H11V2.5H9.75A2.25 2.25 0 0 0 7.5 4.75v2.75H6a.5.5 0 0 0-.5.5v1.5A.5.5 0 0 0 6 10h1.5v5.5a.5.5 0 0 0 .5.5H10v2.75A2.25 2.25 0 0 0 12.25 21h7.5A2.25 2.25 0 0 0 22 18.75v-7.5A2.25 2.25 0 0 0 19.75 9H17V6.5a.5.5 0 0 0-.5-.5h-3zm-7 3v1.5H2.5v-1.5H6.5zm.5-1.5a.5.5 0 0 1 .5-.5h3V2.5h-3a.5.5 0 0 0-.5.5v2.75zM6.5 10v5.5h-4V10h4z"/>
                                 </svg>
                             {% elif file.name.endswith('.js') %}
                                 <svg class="file-icon" viewBox="0 0 24 24" fill="var(--primary-color)">
