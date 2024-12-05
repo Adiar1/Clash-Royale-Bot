@@ -92,7 +92,7 @@ async def handle_whotokick_command(bot, interaction: Interaction, input_value: s
                 value=f"**Total Score: {score:.2f}/100**\n"
                       f"-Fame: {fame_split:.2f}/100\n"
                       f"-Trend: {'📈' if slope_split >= 10 else '📉'} {abs(slope_split):.2f}/100\n"
-                      f"-Commitment: {weeks_split}/100",
+                      f"-Commitment: {weeks_split}/10",
                 inline=False
             )
             players_to_kick.append({

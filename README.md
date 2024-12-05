@@ -36,7 +36,7 @@ To use this bot in your Discord server, simply click on the following link:
 
 2. Install required packages:
    ```
-   pip install discord.py==2.3.2 aiohttp requests numpy matplotlib python-dotenv
+   pip install discord.py aiohttp requests numpy matplotlib python-dotenv prettytable
    ```
 
 3. Create a `.env` file in the root directory with the following content:

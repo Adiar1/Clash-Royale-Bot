@@ -59,8 +59,8 @@ async def handle_info_command(interaction: Interaction) -> None:
     embed.add_field(
         name="📊 Advanced Features",
         value="""
-- `/whotokick [clan_tag] [n]` - Get recommendations for kicking members
-- `/whotopromote [clan_tag] [n]` - Get recommendations for promoting members
+- `/whotokick [clan_tag] [n]` - Get recommendations for kicking members (n is by default 5 but can be from 1 to 24)
+- `/whotopromote [clan_tag] [n]` - Get recommendations for promoting members (n is by default 5 but can be from 1 to 24)
         """,
         inline=False
     )
