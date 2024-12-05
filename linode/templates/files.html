@@ -157,6 +157,10 @@
                         };
                     }
 
+                    if (isLastPart) {
+                        current[part].isDir = file.is_dir;
+                    }
+
                     current = current[part].children;
                 });
             });
@@ -164,8 +168,13 @@
             return tree;
         }
 
-        function renderTree(tree, parentEl, currentDir = '') {
+        function renderTree(tree, parentEl, currentDir = '', depth = 0) {
             const ul = document.createElement('ul');
+
+            // Only hide the top-level ul if it's not the root
+            if (depth > 0) {
+                ul.classList.add('hidden');
+            }
 
             Object.keys(tree).sort((a, b) => {
                 const aIsDir = tree[a].isDir;
@@ -176,19 +185,21 @@
                 const li = document.createElement('li');
                 li.classList.add(item.isDir ? 'directory' : 'file');
 
-                if (item.isDir) {
-                    const arrow = document.createElement('span');
-                    arrow.classList.add('arrow');
-                    li.appendChild(arrow);
-                }
+                const arrow = document.createElement('span');
+                arrow.classList.add('arrow');
+                li.appendChild(arrow);
 
+                const fullPath = currentDir ? `${currentDir}/${key}` : key;
                 const link = document.createElement('a');
-                link.href = '#';
-                link.textContent = key;
+                link.href = `/files?dir=${fullPath}`;
+                link.textContent = key + (item.isDir ? '' : '');
+
                 li.appendChild(link);
 
-                if (item.isDir) {
-                    renderTree(item.children, li, currentDir ? `${currentDir}/${key}` : key);
+                // Add expandable class and render children if it's a directory with children
+                if (item.isDir && Object.keys(item.children).length > 0) {
+                    li.classList.add('expandable');
+                    renderTree(item.children, li, fullPath, depth + 1);
                 }
 
                 ul.appendChild(li);
@@ -211,14 +222,21 @@
             const organizedFiles = organizeFiles(files);
             renderTree(organizedFiles, fileTree);
 
-            fileTree.addEventListener('click', e => {
+            // Toggle directory expansion
+            fileTree.addEventListener('click', (e) => {
                 const li = e.target.closest('li');
-                if (!li || !li.classList.contains('directory')) return;
+                if (!li) return;
 
-                const ul = li.querySelector('ul');
-                if (ul) {
-                    ul.classList.toggle('hidden');
+                const isArrowClick = e.target.classList.contains('arrow');
+                const isDirectoryClick = li.classList.contains('directory');
+
+                if ((isArrowClick || isDirectoryClick) && li.classList.contains('expandable')) {
+                    e.preventDefault();
                     li.classList.toggle('expanded');
+                    const childUl = li.querySelector('ul');
+                    if (childUl) {
+                        childUl.classList.toggle('hidden');
+                    }
                 }
             });
         });
