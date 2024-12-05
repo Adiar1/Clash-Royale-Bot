@@ -95,7 +95,7 @@ async def handle_whotopromote_command(bot, interaction: Interaction, input_value
                 value=f"**Total Score: {score:.2f}/100**\n"
                       f"-Fame: {fame_split:.2f}/100\n"
                       f"-Trend: {trend_emoji} {abs(slope_split):.2f}/100\n"
-                      f"-Commitment: {weeks_split}/100",
+                      f"-Commitment: {weeks_split}/10",
                 inline=False
             )
             top_performers.append({

@@ -52,13 +52,13 @@ async def get_member_scores(clan_tag: str):
 
         slope_score = slope_score(slope)
 
-        weeks_old_score = weeks_old / 10 * 10
+        weeks_old_score = weeks_old
 
         # Calculate total score
         total_score = fame_score + slope_score + weeks_old_score
         fame_breakdown = fame_score * 100 / 70
         slope_breakdown = slope_score * 100 / 20
-        weeks_breakdown = weeks_old_score * 100 / 10
+        weeks_breakdown = weeks_old_score
 
         return member_tag, member_name, total_score, fame_breakdown, slope_breakdown, weeks_breakdown
 
