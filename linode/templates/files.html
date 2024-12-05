@@ -38,18 +38,6 @@
             margin-bottom: 20px;
             text-align: center;
         }
-        .breadcrumb {
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        .breadcrumb a {
-            color: var(--primary-color);
-            text-decoration: none;
-            margin: 0 5px;
-        }
-        .breadcrumb a:hover {
-            text-decoration: underline;
-        }
         .back-link {
             display: block;
             text-align: center;
@@ -145,13 +133,19 @@
         .ipynb-file::before {
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23F37726'%3E%3Cpath d='M7.646 16.354c-.645 0-1.17-.524-1.17-1.17v-4.705c0-.645.525-1.17 1.17-1.17h9.708c.645 0 1.17.525 1.17 1.17v4.705c0 .646-.525 1.17-1.17 1.17H7.646zm3.032-1.416c0 .172.141.313.313.313H15c.172 0 .313-.141.313-.313v-3.876A.314.314 0 0 0 15 10.75H11c-.172 0-.313.141-.313.313v3.875z'/%3E%3C/svg%3E");
         }
+        .current-path {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>File Viewer</h1>
-        <div class="breadcrumb" id="breadcrumb"></div>
         <a href="/" class="back-link">Go Back</a>
+        <div class="current-path" id="currentPath"></div>
         <div class="file-tree" id="fileTree">
             <!-- JavaScript will populate this -->
         </div>
@@ -163,49 +157,27 @@
             return path.replace(/^\/+|\/+$/g, '').replace(/\/+/g, '/');
         }
 
-        function createBreadcrumbs(currentPath) {
-            const breadcrumbEl = document.getElementById('breadcrumb');
-            breadcrumbEl.innerHTML = '';
-
-            // Create home link
-            const homeLink = document.createElement('a');
-            homeLink.href = '/files';
-            homeLink.textContent = 'Home';
-            breadcrumbEl.appendChild(homeLink);
-
-            if (currentPath) {
-                const pathParts = currentPath.split('/');
-                let accumulatedPath = '';
-
-                pathParts.forEach((part, index) => {
-                    const separator = document.createTextNode(' / ');
-                    breadcrumbEl.appendChild(separator);
-
-                    const link = document.createElement('a');
-                    accumulatedPath += (accumulatedPath ? '/' : '') + part;
-                    link.href = `/files?dir=${encodeURIComponent(accumulatedPath)}`;
-                    link.textContent = part;
-                    breadcrumbEl.appendChild(link);
-                });
-            }
-        }
-
         function organizeFiles(files, currentPath = '') {
             const tree = {};
 
             files.forEach(file => {
                 // Ensure consistent path handling
                 const safeName = sanitizePath(file.name);
+                const pathParts = safeName.split('/').filter(p => p);
 
-                // If a current path is provided, ensure the file is within that path
-                if (currentPath && !safeName.startsWith(currentPath + '/')) return;
+                // If a current path is provided, filter files to only show files in that path
+                if (currentPath) {
+                    const currentPathParts = currentPath.split('/').filter(p => p);
 
-                // Remove the current path prefix for relative path processing
-                const relativePath = currentPath
-                    ? safeName.slice(currentPath.length + 1)
-                    : safeName;
+                    // Skip files that don't belong in the current directory
+                    if (!pathParts.slice(0, currentPathParts.length).every((part, i) => part === currentPathParts[i])) {
+                        return;
+                    }
 
-                const pathParts = relativePath.split('/').filter(p => p);
+                    // Adjust path parts to be relative to current path
+                    pathParts.splice(0, currentPathParts.length);
+                }
+
                 let current = tree;
 
                 pathParts.forEach((part, index) => {
@@ -215,7 +187,7 @@
                         current[part] = {
                             isDir: file.is_dir || (!isLastPart),
                             children: {},
-                            fullPath: (currentPath ? currentPath + '/' : '') + pathParts.slice(0, index + 1).join('/')
+                            fullPath: pathParts.slice(0, index + 1).join('/')
                         };
                     }
 
@@ -262,7 +234,7 @@
                 arrow.classList.add('arrow');
                 li.appendChild(arrow);
 
-                const fullPath = item.fullPath || (currentDir ? `${currentDir}/${key}` : key);
+                const fullPath = currentDir ? `${currentDir}/${key}` : key;
                 const link = document.createElement('a');
                 link.href = `/files?dir=${encodeURIComponent(fullPath)}`;
                 link.textContent = key + (item.isDir ? '' : '');
@@ -285,11 +257,19 @@
             parentEl.appendChild(ul);
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            // Get current directory from URL
+        function getCurrentPath() {
             const urlParams = new URLSearchParams(window.location.search);
-            const currentDir = urlParams.get('dir') || '';
+            return urlParams.get('dir') || '';
+        }
 
+        function updateCurrentPathDisplay(path) {
+            const currentPathEl = document.getElementById('currentPath');
+            if (currentPathEl) {
+                currentPathEl.textContent = 'Current Path: ' + (path || 'Root');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
             const files = [
                 {% for file in files %}
                 {
@@ -299,12 +279,12 @@
                 {% endfor %}
             ];
 
-            // Create breadcrumbs
-            createBreadcrumbs(currentDir);
+            const currentPath = getCurrentPath();
+            updateCurrentPathDisplay(currentPath);
 
             const fileTree = document.getElementById('fileTree');
-            const organizedFiles = organizeFiles(files, currentDir);
-            renderTree(organizedFiles, fileTree, currentDir);
+            const organizedFiles = organizeFiles(files, currentPath);
+            renderTree(organizedFiles, fileTree, currentPath);
 
             // Toggle directory expansion
             fileTree.addEventListener('click', (e) => {
