@@ -11,6 +11,8 @@
             --secondary-dark: #2C2541;
             --text-color: #E0E0E0;
             --hover-color: #4A3A6D;
+            --toggle-on: #4CAF50;
+            --toggle-off: #F44336;
         }
         * {
             margin: 0;
@@ -129,60 +131,49 @@
             font-size: 2.5rem;
             text-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
         }
-        .button-group {
+        .toggle-wrapper {
             display: flex;
-            flex-direction: column;
-            gap: 15px;
-            margin-bottom: 30px;
+            justify-content: center;
             align-items: center;
+            margin-bottom: 30px;
         }
-        .switch {
+        .toggle-container {
             position: relative;
-            display: inline-block;
             width: 120px;
             height: 60px;
-        }
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-        .slider {
-            position: absolute;
+            background-color: var(--background-dark);
+            border-radius: 30px;
             cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #4A4A4A;
-            transition: .4s;
-            border-radius: 34px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2) inset;
         }
-        .slider:before {
+        .toggle-slider {
             position: absolute;
-            content: "";
-            height: 52px;
-            width: 52px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
+            top: 5px;
+            left: 5px;
+            width: 50px;
+            height: 50px;
+            background-color: var(--toggle-off);
             border-radius: 50%;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
         }
-        input:checked + .slider {
-            background-color: var(--primary-color);
+        .toggle-container.active {
+            background-color: rgba(76, 175, 80, 0.2);
         }
-        input:checked + .slider:before {
-            transform: translateX(60px);
+        .toggle-container.active .toggle-slider {
+            left: calc(100% - 55px);
+            background-color: var(--toggle-on);
         }
-        .slider-label {
-            margin-top: 10px;
-            font-size: 1rem;
+        .toggle-text {
+            margin-right: 15px;
             color: var(--text-color);
-            transition: color 0.3s ease;
-        }
-        input:checked ~ .slider-label {
-            color: var(--primary-color);
+            font-weight: bold;
         }
         .nav-links {
             display: flex;
@@ -209,21 +200,11 @@
     <div id="bubble-container"></div>
     <div class="container" id="container">
         <h1>Discord Bot Control</h1>
-        <div class="button-group">
-            <form id="bot-toggle-form" action="/toggle" method="post">
-                <label class="switch">
-                    <input type="checkbox" name="bot_status" id="bot-toggle"
-                           {{ "checked" if bot_running }}
-                           onchange="this.form.submit()">
-                    <span class="slider"></span>
-                </label>
-                <div class="slider-label">
-                    {{ "Bot Running" if bot_running else "Bot Stopped" }}
-                </div>
-            </form>
-            <form action="/update" method="post">
-                <button type="submit" class="button">Update Bot</button>
-            </form>
+        <div class="toggle-wrapper">
+            <span class="toggle-text">Bot Status</span>
+            <div class="toggle-container" id="botToggle">
+                <div class="toggle-slider">OFF</div>
+            </div>
         </div>
         <div class="nav-links">
             <a href="/files">View Files</a>
@@ -236,11 +217,43 @@
         // Container tilt effect
         const container = document.getElementById('container');
         const scoreDisplay = document.getElementById('score-display');
+        const botToggle = document.getElementById('botToggle');
         let score = 0;
         let gameStarted = false;
         let baseAnimationDuration = 12; // Base duration in seconds
         let hasClickedBubble = false;
         let isWKeyDown = false;
+        let isBotRunning = false;
+
+        // Toggle switch functionality
+        botToggle.addEventListener('click', () => {
+            isBotRunning = !isBotRunning;
+            botToggle.classList.toggle('active');
+
+            // Update slider text
+            const slider = botToggle.querySelector('.toggle-slider');
+            slider.textContent = isBotRunning ? 'ON' : 'OFF';
+
+            // Send request to server
+            fetch(isBotRunning ? '/start' : '/stop', { method: 'POST' })
+                .then(response => {
+                    if (!response.ok) {
+                        // Revert toggle if request fails
+                        isBotRunning = !isBotRunning;
+                        botToggle.classList.toggle('active');
+                        slider.textContent = isBotRunning ? 'ON' : 'OFF';
+                        alert('Failed to change bot status');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    // Revert toggle if request fails
+                    isBotRunning = !isBotRunning;
+                    botToggle.classList.toggle('active');
+                    slider.textContent = isBotRunning ? 'ON' : 'OFF';
+                    alert('Failed to change bot status');
+                });
+        });
 
         function updateScoreColor() {
             const redSteps = Math.min(Math.floor(score / 40), 6);
