@@ -38,6 +38,13 @@
             margin-bottom: 20px;
             text-align: center;
         }
+        .current-path {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
         .back-link {
             display: block;
             text-align: center;
@@ -133,19 +140,13 @@
         .ipynb-file::before {
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23F37726'%3E%3Cpath d='M7.646 16.354c-.645 0-1.17-.524-1.17-1.17v-4.705c0-.645.525-1.17 1.17-1.17h9.708c.645 0 1.17.525 1.17 1.17v4.705c0 .646-.525 1.17-1.17 1.17H7.646zm3.032-1.416c0 .172.141.313.313.313H15c.172 0 .313-.141.313-.313v-3.876A.314.314 0 0 0 15 10.75H11c-.172 0-.313.141-.313.313v3.875z'/%3E%3C/svg%3E");
         }
-        .current-path {
-            color: var(--primary-color);
-            margin-bottom: 15px;
-            font-size: 14px;
-            opacity: 0.8;
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>File Viewer</h1>
-        <a href="/" class="back-link">Go Back</a>
         <div class="current-path" id="currentPath"></div>
+        <a href="/" class="back-link">Go Back</a>
         <div class="file-tree" id="fileTree">
             <!-- JavaScript will populate this -->
         </div>
@@ -157,27 +158,19 @@
             return path.replace(/^\/+|\/+$/g, '').replace(/\/+/g, '/');
         }
 
-        function organizeFiles(files, currentPath = '') {
+        function getCurrentDirectory() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return sanitizePath(urlParams.get('dir') || '');
+        }
+
+        function organizeFiles(files, currentDir) {
             const tree = {};
 
             files.forEach(file => {
-                // Ensure consistent path handling
-                const safeName = sanitizePath(file.name);
+                // Ensure consistent path handling with current directory
+                const fullPath = currentDir ? `${currentDir}/${file.name}` : file.name;
+                const safeName = sanitizePath(fullPath);
                 const pathParts = safeName.split('/').filter(p => p);
-
-                // If a current path is provided, filter files to only show files in that path
-                if (currentPath) {
-                    const currentPathParts = currentPath.split('/').filter(p => p);
-
-                    // Skip files that don't belong in the current directory
-                    if (!pathParts.slice(0, currentPathParts.length).every((part, i) => part === currentPathParts[i])) {
-                        return;
-                    }
-
-                    // Adjust path parts to be relative to current path
-                    pathParts.splice(0, currentPathParts.length);
-                }
-
                 let current = tree;
 
                 pathParts.forEach((part, index) => {
@@ -234,7 +227,7 @@
                 arrow.classList.add('arrow');
                 li.appendChild(arrow);
 
-                const fullPath = currentDir ? `${currentDir}/${key}` : key;
+                const fullPath = item.fullPath;
                 const link = document.createElement('a');
                 link.href = `/files?dir=${encodeURIComponent(fullPath)}`;
                 link.textContent = key + (item.isDir ? '' : '');
@@ -257,19 +250,8 @@
             parentEl.appendChild(ul);
         }
 
-        function getCurrentPath() {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get('dir') || '';
-        }
-
-        function updateCurrentPathDisplay(path) {
-            const currentPathEl = document.getElementById('currentPath');
-            if (currentPathEl) {
-                currentPathEl.textContent = 'Current Path: ' + (path || 'Root');
-            }
-        }
-
         document.addEventListener('DOMContentLoaded', () => {
+            const currentDir = getCurrentDirectory();
             const files = [
                 {% for file in files %}
                 {
@@ -279,12 +261,13 @@
                 {% endfor %}
             ];
 
-            const currentPath = getCurrentPath();
-            updateCurrentPathDisplay(currentPath);
+            // Update current path display
+            const currentPathEl = document.getElementById('currentPath');
+            currentPathEl.textContent = currentDir || 'Root Directory';
 
             const fileTree = document.getElementById('fileTree');
-            const organizedFiles = organizeFiles(files, currentPath);
-            renderTree(organizedFiles, fileTree, currentPath);
+            const organizedFiles = organizeFiles(files, currentDir);
+            renderTree(organizedFiles, fileTree, currentDir);
 
             // Toggle directory expansion
             fileTree.addEventListener('click', (e) => {
