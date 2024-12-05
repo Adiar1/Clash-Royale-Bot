@@ -11,8 +11,6 @@
             --secondary-dark: #2C2541;
             --text-color: #E0E0E0;
             --hover-color: #4A3A6D;
-            --toggle-on: #4CAF50;
-            --toggle-off: #F44336;
         }
         * {
             margin: 0;
@@ -139,41 +137,70 @@
         }
         .toggle-container {
             position: relative;
-            width: 120px;
-            height: 60px;
-            background-color: var(--background-dark);
-            border-radius: 30px;
+            width: 200px;
+            height: 70px;
+            background-color: #333;
+            border-radius: 35px;
             cursor: pointer;
+            display: flex;
+            align-items: center;
             transition: all 0.3s ease;
-            box-shadow: 0 0 10px rgba(0,0,0,0.2) inset;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
         }
-        .toggle-slider {
+        .toggle-container::before {
+            content: 'START';
             position: absolute;
-            top: 5px;
-            left: 5px;
-            width: 50px;
-            height: 50px;
-            background-color: var(--toggle-off);
+            left: 15px;
+            color: white;
+            font-weight: bold;
+            transition: opacity 0.3s ease;
+            opacity: 1;
+        }
+        .toggle-container::after {
+            content: 'STOP';
+            position: absolute;
+            right: 15px;
+            color: white;
+            font-weight: bold;
+            transition: opacity 0.3s ease;
+            opacity: 0;
+        }
+        .toggle-switch {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background-color: var(--primary-color);
             border-radius: 50%;
+            left: 5px;
             transition: all 0.3s ease;
             display: flex;
             justify-content: center;
             align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        .toggle-switch::before {
+            content: '▶';
             color: white;
-            font-weight: bold;
-            font-size: 12px;
+            font-size: 20px;
+            transition: transform 0.3s ease;
         }
         .toggle-container.active {
-            background-color: rgba(76, 175, 80, 0.2);
+            background-color: #2A2A2A;
         }
-        .toggle-container.active .toggle-slider {
-            left: calc(100% - 55px);
-            background-color: var(--toggle-on);
+        .toggle-container.active::before {
+            opacity: 0;
         }
-        .toggle-text {
-            margin-right: 15px;
-            color: var(--text-color);
-            font-weight: bold;
+        .toggle-container.active::after {
+            opacity: 1;
+        }
+        .toggle-container.active .toggle-switch {
+            left: calc(100% - 65px);
+            background-color: #FF4136;
+        }
+        .toggle-container.active .toggle-switch::before {
+            content: '■';
+            transform: scale(0.8);
         }
         .nav-links {
             display: flex;
@@ -201,9 +228,8 @@
     <div class="container" id="container">
         <h1>Discord Bot Control</h1>
         <div class="toggle-wrapper">
-            <span class="toggle-text">Bot Status</span>
-            <div class="toggle-container" id="botToggle">
-                <div class="toggle-slider">OFF</div>
+            <div class="toggle-container" id="bot-toggle">
+                <div class="toggle-switch"></div>
             </div>
         </div>
         <div class="nav-links">
@@ -217,43 +243,13 @@
         // Container tilt effect
         const container = document.getElementById('container');
         const scoreDisplay = document.getElementById('score-display');
-        const botToggle = document.getElementById('botToggle');
+        const botToggle = document.getElementById('bot-toggle');
         let score = 0;
         let gameStarted = false;
         let baseAnimationDuration = 12; // Base duration in seconds
         let hasClickedBubble = false;
         let isWKeyDown = false;
-        let isBotRunning = false;
-
-        // Toggle switch functionality
-        botToggle.addEventListener('click', () => {
-            isBotRunning = !isBotRunning;
-            botToggle.classList.toggle('active');
-
-            // Update slider text
-            const slider = botToggle.querySelector('.toggle-slider');
-            slider.textContent = isBotRunning ? 'ON' : 'OFF';
-
-            // Send request to server
-            fetch(isBotRunning ? '/start' : '/stop', { method: 'POST' })
-                .then(response => {
-                    if (!response.ok) {
-                        // Revert toggle if request fails
-                        isBotRunning = !isBotRunning;
-                        botToggle.classList.toggle('active');
-                        slider.textContent = isBotRunning ? 'ON' : 'OFF';
-                        alert('Failed to change bot status');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    // Revert toggle if request fails
-                    isBotRunning = !isBotRunning;
-                    botToggle.classList.toggle('active');
-                    slider.textContent = isBotRunning ? 'ON' : 'OFF';
-                    alert('Failed to change bot status');
-                });
-        });
+        let botRunning = false;
 
         function updateScoreColor() {
             const redSteps = Math.min(Math.floor(score / 40), 6);
@@ -262,6 +258,28 @@
             const blueComponent = Math.max(224 - (redSteps * 32), 0);
             scoreDisplay.style.color = `rgb(${redComponent}, ${greenComponent}, ${blueComponent})`;
         }
+
+        // Toggle switch functionality
+        botToggle.addEventListener('click', () => {
+            botRunning = !botRunning;
+            botToggle.classList.toggle('active', botRunning);
+
+            // Send request to start or stop bot
+            fetch(botRunning ? '/start' : '/stop', { method: 'POST' })
+                .then(response => {
+                    if (!response.ok) {
+                        // Revert toggle if request fails
+                        botRunning = !botRunning;
+                        botToggle.classList.toggle('active', botRunning);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    // Revert toggle if request fails
+                    botRunning = !botRunning;
+                    botToggle.classList.toggle('active', botRunning);
+                });
+        });
 
         function handleMouseMove(e) {
             if (isWKeyDown) return; // Prevent tilt when W key is held
