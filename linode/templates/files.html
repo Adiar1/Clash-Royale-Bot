@@ -127,6 +127,12 @@
         .file::before {
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23E0E0E0'%3E%3Cpath d='M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2z'/%3E%3C/svg%3E");
         }
+        .py-file::before {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232E85FF'%3E%3Cpath d='M12 0a12 12 0 0 0-3 23.5c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.5-1.3-1.3-1.6-1.3-1.6-1-.7.1-.7.1-.7 1.2.1 1.8 1.3 1.8 1.3 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.3.5-2.4 1.3-3.2-.1-.3-.6-1.5.2-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.8 1.7.3 2.9.2 3.2.8.8 1.3 1.9 1.3 3.2 0 4.7-2.8 5.7-5.5 6 .4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 0z'/%3E%3C/svg%3E");
+        }
+        .ipynb-file::before {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23F37726'%3E%3Cpath d='M7.646 16.354c-.645 0-1.17-.524-1.17-1.17v-4.705c0-.645.525-1.17 1.17-1.17h9.708c.645 0 1.17.525 1.17 1.17v4.705c0 .646-.525 1.17-1.17 1.17H7.646zm3.032-1.416c0 .172.141.313.313.313H15c.172 0 .313-.141.313-.313v-3.876A.314.314 0 0 0 15 10.75H11c-.172 0-.313.141-.313.313v3.875z'/%3E%3C/svg%3E");
+        }
     </style>
 </head>
 <body>
@@ -139,11 +145,18 @@
     </div>
 
     <script>
+        function sanitizePath(path) {
+            // Remove leading and trailing slashes, replace multiple slashes
+            return path.replace(/^\/+|\/+$/g, '').replace(/\/+/g, '/');
+        }
+
         function organizeFiles(files) {
             const tree = {};
 
             files.forEach(file => {
-                const pathParts = file.name.split('/').filter(p => p);
+                // Ensure consistent path handling
+                const safeName = sanitizePath(file.name);
+                const pathParts = safeName.split('/').filter(p => p);
                 let current = tree;
 
                 pathParts.forEach((part, index) => {
@@ -159,6 +172,16 @@
 
                     if (isLastPart) {
                         current[part].isDir = file.is_dir;
+
+                        // Add file type detection
+                        if (!file.is_dir) {
+                            const ext = part.split('.').pop().toLowerCase();
+                            if (ext === 'py') {
+                                current[part].fileType = 'py-file';
+                            } else if (ext === 'ipynb') {
+                                current[part].fileType = 'ipynb-file';
+                            }
+                        }
                     }
 
                     current = current[part].children;
@@ -181,13 +204,18 @@
                 const li = document.createElement('li');
                 li.classList.add(item.isDir ? 'directory' : 'file');
 
+                // Add specific file type class for non-directories
+                if (item.fileType) {
+                    li.classList.add(item.fileType);
+                }
+
                 const arrow = document.createElement('span');
                 arrow.classList.add('arrow');
                 li.appendChild(arrow);
 
                 const fullPath = currentDir ? `${currentDir}/${key}` : key;
                 const link = document.createElement('a');
-                link.href = `/files?dir=${fullPath}`;
+                link.href = `/files?dir=${encodeURIComponent(fullPath)}`;
                 link.textContent = key + (item.isDir ? '' : '');
 
                 li.appendChild(link);
