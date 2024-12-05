@@ -7,149 +7,124 @@
     <style>
         :root {
             --primary-color: #7B68EE;
-            --background-dark: #1E133E;
-            --secondary-dark: #2C2541;
-            --text-color: #E0E0E0;
-            --hover-color: #4A3A6D;
+            --background-dark: #0D1117;
+            --secondary-dark: #161B22;
+            --text-color: #C9D1D9;
+            --hover-color: #21262D;
+            --border-color: #30363D;
         }
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        html, body {
-            max-width: 100%;
-            overflow-x: hidden;
-        }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
             background-color: var(--background-dark);
             color: var(--text-color);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            perspective: 1000px;
+            line-height: 1.5;
         }
         .container {
-            background-color: var(--secondary-dark);
-            border-radius: 15px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-            padding: 40px;
-            width: 100%;
-            max-width: 800px;
-            text-align: center;
-            transition: transform 0.3s ease;
-            transform-style: preserve-3d;
-            will-change: transform;
-            position: relative;
-            z-index: 1;
-            margin: 20px;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 24px;
         }
-        h1 {
-            color: var(--primary-color);
-            margin-bottom: 30px;
-            font-size: 2.5rem;
-            text-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-        }
-        .breadcrumbs {
+        .breadcrumb {
             display: flex;
             align-items: center;
-            justify-content: center;
-            margin-bottom: 20px;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
         }
-        .breadcrumbs a {
+        .breadcrumb-item {
             color: var(--primary-color);
             text-decoration: none;
-            transition: color 0.3s ease;
-            padding: 5px 10px;
+            font-size: 14px;
         }
-        .breadcrumbs a:hover {
+        .breadcrumb-item:hover {
+            text-decoration: underline;
+        }
+        .breadcrumb-separator {
             color: var(--text-color);
-        }
-        .breadcrumbs a:not(:last-child)::after {
-            content: "/";
-            color: var(--primary-color);
-            margin: 0 5px;
+            opacity: 0.5;
         }
         .file-list {
-            text-align: left;
-            max-height: 500px;
-            overflow-y: auto;
-            overflow-x: hidden;
-            padding-right: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
         }
         .file-item {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 12px 20px;
-            background-color: var(--background-dark);
-            border-radius: 10px;
-            margin-bottom: 10px;
-            transition: all 0.3s ease;
+            padding: 8px 16px;
             text-decoration: none;
-            width: 100%;
+            color: var(--text-color);
+            border-bottom: 1px solid var(--border-color);
+            background-color: var(--secondary-dark);
+        }
+        .file-item:last-child {
+            border-bottom: none;
         }
         .file-item:hover {
             background-color: var(--hover-color);
-            transform: scale(1.02);
-        }
-        .file-name {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            color: var(--text-color);
-            font-size: 1rem;
-            max-width: 70%;
-            overflow: hidden;
-            text-overflow: ellipsis;
         }
         .file-icon {
-            width: 24px;
-            height: 24px;
+            width: 20px;
+            height: 20px;
+            margin-right: 16px;
             flex-shrink: 0;
         }
-        .file-action {
-            color: var(--primary-color);
-            font-weight: 600;
-            opacity: 0.8;
+        .file-name {
+            flex-grow: 1;
+            font-size: 14px;
         }
-        /* Scrollbar styling */
-        .file-list::-webkit-scrollbar {
-            width: 10px;
+        .file-meta {
+            color: #8B949E;
+            font-size: 12px;
+            text-align: right;
+            margin-left: 16px;
         }
-        .file-list::-webkit-scrollbar-track {
-            background: var(--background-dark);
-        }
-        .file-list::-webkit-scrollbar-thumb {
-            background: var(--primary-color);
-            border-radius: 5px;
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+            .file-meta {
+                display: none;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>File Explorer</h1>
-        <div class="breadcrumbs">
-            <a href="/">Home</a>
-            {% for dir in current_dir.split('/') %}
-                <a href="/files?dir={{ '/'.join(current_dir.split('/')[0:loop.index+1]) }}">{{ dir }}</a>
+        <div class="breadcrumb">
+            <a href="/" class="breadcrumb-item">root</a>
+            {% for part in current_dir.split('/') %}
+                {% if part %}
+                    <span class="breadcrumb-separator">/</span>
+                    <a href="/files?dir={{ '/'.join(current_dir.split('/')[:loop.index]) }}" class="breadcrumb-item">{{ part }}</a>
+                {% endif %}
             {% endfor %}
         </div>
 
         <div class="file-list">
+            {% if current_dir %}
+                <a href="/files?dir={{ '/'.join(current_dir.split('/')[:-1]) }}" class="file-item">
+                    <svg class="file-icon" viewBox="0 0 24 24" fill="#7B68EE">
+                        <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+                    </svg>
+                    <span class="file-name">..</span>
+                    <div class="file-meta">Parent directory</div>
+                </a>
+            {% endif %}
+
             {% for file in files %}
                 {% if file.is_dir %}
                     <a href="/files?dir={{ (current_dir + '/' + file.name).lstrip('/') }}" class="file-item">
-                        <div class="file-name">
-                            <svg class="file-icon" viewBox="0 0 24 24" fill="#7B68EE">
-                                <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
-                                <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#7B68EE" fill-opacity="0.3"/>
-                            </svg>
-                            {{ file.name }}/
-                        </div>
-                        <span class="file-action">Open Folder</span>
+                        <svg class="file-icon" viewBox="0 0 24 24" fill="#7B68EE">
+                            <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+                        </svg>
+                        <span class="file-name">{{ file.name }}</span>
+                        <div class="file-meta">Directory</div>
                     </a>
                 {% endif %}
             {% endfor %}
@@ -157,27 +132,24 @@
             {% for file in files %}
                 {% if not file.is_dir %}
                     <a href="/files?dir={{ file.path }}" class="file-item">
-                        <div class="file-name">
-                            {% if file.name.endswith('.py') %}
-                                <svg class="file-icon" viewBox="0 0 400 418" xmlns="http://www.w3.org/2000/svg">
-                                    <g>
-                                        <path d="M185.800 18.667 C 152.579 21.413,137.423 25.800,124.103 36.524 C 119.158 40.506,114.648 47.515,113.502 53.000 C 112.509 57.755,112.810 93.389,113.863 95.666 C 115.752 99.754,114.013 99.591,157.617 99.767 C 199.069 99.935,197.166 99.818,199.281 102.332 C 202.130 105.717,200.497 110.506,195.949 112.101 C 194.943 112.454,178.525 112.630,131.400 112.795 L 68.200 113.015 64.302 114.106 C 34.617 122.411,19.724 148.904,18.599 195.400 C 17.467 242.230,30.102 273.846,54.583 285.443 C 61.304 288.627,63.069 288.894,78.666 289.095 C 102.241 289.399,100.846 291.005,100.810 263.600 C 100.779 240.060,101.270 234.410,104.028 226.574 C 109.417 211.265,120.059 200.693,134.188 196.611 C 142.591 194.184,140.492 194.269,194.000 194.198 C 242.902 194.134,243.010 194.132,248.176 193.232 C 272.623 188.973,286.005 175.266,288.377 152.058 C 288.950 146.445,288.955 66.231,288.382 61.590 C 285.356 37.081,259.361 21.784,216.000 18.996 C 208.091 18.487,190.313 18.294,185.800 18.667 M154.080 46.850 C 164.076 48.973,169.170 60.250,164.376 69.647 C 160.891 76.478,150.565 79.678,143.650 76.069 C 127.259 67.513,136.005 43.012,154.080 46.850" fill="#3473a5"/>
-                                        <path d="M309.600 110.435 C 301.044 111.027,301.085 110.899,300.765 137.800 C 300.562 154.794,300.380 159.794,299.847 163.000 C 295.871 186.893,279.868 202.538,257.114 204.774 C 254.776 205.004,232.713 205.280,206.000 205.413 C 156.918 205.658,156.613 205.669,148.542 207.598 C 131.241 211.733,119.142 222.611,115.389 237.404 C 113.279 245.723,113.238 246.762,113.146 294.600 L 113.060 339.000 113.926 342.200 C 116.895 353.170,124.578 362.074,136.800 368.707 C 149.014 375.337,164.787 379.176,185.600 380.587 C 235.693 383.983,273.503 374.133,285.151 354.652 C 288.731 348.666,289.204 345.359,289.186 326.471 C 289.164 304.404,288.866 302.467,285.180 300.405 L 283.400 299.409 244.600 299.403 C 206.633 299.396,205.766 299.379,204.226 298.598 C 199.762 296.335,199.659 290.489,204.040 288.000 L 205.800 287.000 268.200 287.000 C 302.520 287.000,331.410 286.852,332.400 286.671 C 359.006 281.812,375.823 261.880,381.227 228.800 C 381.908 224.633,382.209 179.249,381.590 174.000 C 377.214 136.845,357.675 111.439,332.800 110.558 C 324.314 110.258,313.030 110.198,309.600 110.435" fill="#fcd343"/>
-                                    </g>
-                                </svg>
-                            {% elif file.name.endswith('.md') %}
-                                <svg class="file-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 247.52" fill="#7B68EE">
-                                    <path d="M36.286 43.534 L 26.097 43.940 26.364 124.059 L 26.632 204.178 49.608 204.178 L 72.585 204.178 72.281 158.978 C 72.114 134.117,72.290 113.270,72.674 112.650 C 73.486 111.336,73.430 111.274,92.973 135.770 C 100.992 145.822,110.260 157.421,113.568 161.545 C 116.876 165.669,120.127 169.076,120.794 169.117 C 121.919 169.185,131.202 157.923,157.172 124.985 C 162.912 117.705,167.959 111.749,168.388 111.749 C 168.818 111.749,169.291 132.546,169.441 157.963 L 169.713 204.178 192.167 204.178 L 214.621 204.178 214.889 124.182 L 215.156 44.186 200.471 43.558 C 175.827 42.504,168.611 43.396,165.016 47.941 C 136.626 83.842,121.847 101.828,120.736 101.828 C 119.983 101.828,113.541 94.477,106.420 85.492 C 99.299 76.507,88.875 63.466,83.255 56.510 L 73.037 43.864 67.486 43.864 C 64.432 43.864,58.456 43.699,54.205 43.496 C 49.953 43.294,41.890 43.311,36.286 43.534 M297.401 83.812 L 297.128 123.760 274.935 124.042 C 259.834 124.233,252.742 124.686,252.742 125.458 C 252.742 128.550,318.415 204.700,321.082 204.700 C 321.766 204.700,325.624 200.822,329.656 196.084 C 333.689 191.345,343.528 179.918,351.522 170.691 C 376.645 141.696,389.488 126.061,388.929 125.156 C 388.632 124.675,378.547 124.282,366.518 124.282 L 344.648 124.282 344.648 106.174 C 344.648 96.214,344.338 78.120,343.959 65.965 L 343.271 43.864 320.473 43.864 L 297.675 43.864 297.401 83.812 " />
-                                </svg>
-                            {% else %}
-                                <svg class="file-icon" viewBox="0 0 24 24" fill="#607D8B">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" fill="#607D8B"/>
-                                    <path d="M13 9V3.5L18.5 9H13z" fill="#CFD8DC"/>
-                                </svg>
-                            {% endif %}
-                            {{ file.name }}
-                        </div>
-                        <span class="file-action">View File</span>
+                        {% if file.name.endswith('.py') %}
+                            <svg class="file-icon" viewBox="0 0 400 418" xmlns="http://www.w3.org/2000/svg">
+                                <g>
+                                    <path d="M185.800 18.667 C 152.579 21.413,137.423 25.800,124.103 36.524 C 119.158 40.506,114.648 47.515,113.502 53.000 C 112.509 57.755,112.810 93.389,113.863 95.666 C 115.752 99.754,114.013 99.591,157.617 99.767 C 199.069 99.935,197.166 99.818,199.281 102.332 C 202.130 105.717,200.497 110.506,195.949 112.101 C 194.943 112.454,178.525 112.630,131.400 112.795 L 68.200 113.015 64.302 114.106 C 34.617 122.411,19.724 148.904,18.599 195.400 C 17.467 242.230,30.102 273.846,54.583 285.443 C 61.304 288.627,63.069 288.894,78.666 289.095 C 102.241 289.399,100.846 291.005,100.810 263.600 C 100.779 240.060,101.270 234.410,104.028 226.574 C 109.417 211.265,120.059 200.693,134.188 196.611 C 142.591 194.184,140.492 194.269,194.000 194.198 C 242.902 194.134,243.010 194.132,248.176 193.232 C 272.623 188.973,286.005 175.266,288.377 152.058 C 288.950 146.445,288.955 66.231,288.382 61.590 C 285.356 37.081,259.361 21.784,216.000 18.996 C 208.091 18.487,190.313 18.294,185.800 18.667 M154.080 46.850 C 164.076 48.973,169.170 60.250,164.376 69.647 C 160.891 76.478,150.565 79.678,143.650 76.069 C 127.259 67.513,136.005 43.012,154.080 46.850" fill="#3473a5"/>
+                                    <path d="M309.600 110.435 C 301.044 111.027,301.085 110.899,300.765 137.800 C 300.562 154.794,300.380 159.794,299.847 163.000 C 295.871 186.893,279.868 202.538,257.114 204.774 C 254.776 205.004,232.713 205.280,206.000 205.413 C 156.918 205.658,156.613 205.669,148.542 207.598 C 131.241 211.733,119.142 222.611,115.389 237.404 C 113.279 245.723,113.238 246.762,113.146 294.600 L 113.060 339.000 113.926 342.200 C 116.895 353.170,124.578 362.074,136.800 368.707 C 149.014 375.337,164.787 379.176,185.600 380.587 C 235.693 383.983,273.503 374.133,285.151 354.652 C 288.731 348.666,289.204 345.359,289.186 326.471 C 289.164 304.404,288.866 302.467,285.180 300.405 L 283.400 299.409 244.600 299.403 C 206.633 299.396,205.766 299.379,204.226 298.598 C 199.762 296.335,199.659 290.489,204.040 288.000 L 205.800 287.000 268.200 287.000 C 302.520 287.000,331.410 286.852,332.400 286.671 C 359.006 281.812,375.823 261.880,381.227 228.800 C 381.908 224.633,382.209 179.249,381.590 174.000 C 377.214 136.845,357.675 111.439,332.800 110.558 C 324.314 110.258,313.030 110.198,309.600 110.435" fill="#fcd343"/>
+                                </g>
+                            </svg>
+                        {% elif file.name.endswith('.md') %}
+                            <svg class="file-icon" viewBox="0 0 400 247.52" fill="#7B68EE">
+                                <path d="M36.286 43.534 L 26.097 43.940 26.364 124.059 L 26.632 204.178 49.608 204.178 L 72.585 204.178 72.281 158.978 C 72.114 134.117,72.290 113.270,72.674 112.650 C 73.486 111.336,73.430 111.274,92.973 135.770 C 100.992 145.822,110.260 157.421,113.568 161.545 C 116.876 165.669,120.127 169.076,120.794 169.117 C 121.919 169.185,131.202 157.923,157.172 124.985 C 162.912 117.705,167.959 111.749,168.388 111.749 C 168.818 111.749,169.291 132.546,169.441 157.963 L 169.713 204.178 192.167 204.178 L 214.621 204.178 214.889 124.182 L 215.156 44.186 200.471 43.558 C 175.827 42.504,168.611 43.396,165.016 47.941 C 136.626 83.842,121.847 101.828,120.736 101.828 C 119.983 101.828,113.541 94.477,106.420 85.492 C 99.299 76.507,88.875 63.466,83.255 56.510 L 73.037 43.864 67.486 43.864 C 64.432 43.864,58.456 43.699,54.205 43.496 C 49.953 43.294,41.890 43.311,36.286 43.534 M297.401 83.812 L 297.128 123.760 274.935 124.042 C 259.834 124.233,252.742 124.686,252.742 125.458 C 252.742 128.550,318.415 204.700,321.082 204.700 C 321.766 204.700,325.624 200.822,329.656 196.084 C 333.689 191.345,343.528 179.918,351.522 170.691 C 376.645 141.696,389.488 126.061,388.929 125.156 C 388.632 124.675,378.547 124.282,366.518 124.282 L 344.648 124.282 344.648 106.174 C 344.648 96.214,344.338 78.120,343.959 65.965 L 343.271 43.864 320.473 43.864 L 297.675 43.864 297.401 83.812 "/>
+                            </svg>
+                        {% else %}
+                            <svg class="file-icon" viewBox="0 0 24 24" fill="#607D8B">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                            </svg>
+                        {% endif %}
+                        <span class="file-name">{{ file.name }}</span>
+                        <div class="file-meta">{{ file.size if file.size else '' }}</div>
                     </a>
                 {% endif %}
             {% endfor %}
