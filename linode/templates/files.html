@@ -67,6 +67,7 @@
             height: var(--arrow-size);
             cursor: pointer;
             transition: transform 0.2s ease;
+            display: inline-block;
         }
         .arrow::before {
             content: '';
@@ -105,7 +106,7 @@
         .file .arrow {
             display: none;
         }
-        .collapsed > ul {
+        .hidden {
             display: none;
         }
         /* File icons */
@@ -169,8 +170,8 @@
 
         function renderTree(tree, parentEl, currentDir = '') {
             const ul = document.createElement('ul');
+            ul.classList.add('hidden');
 
-            // Sort items: directories first, then alphabetically
             Object.keys(tree).sort((a, b) => {
                 const aIsDir = tree[a].isDir;
                 const bIsDir = tree[b].isDir;
@@ -180,11 +181,6 @@
                 const li = document.createElement('li');
                 li.classList.add(item.isDir ? 'directory' : 'file');
 
-                // Add collapsed class by default for non-root directories
-                if (item.isDir && currentDir !== '') {
-                    li.classList.add('collapsed');
-                }
-
                 const arrow = document.createElement('span');
                 arrow.classList.add('arrow');
                 li.appendChild(arrow);
@@ -192,17 +188,22 @@
                 const fullPath = currentDir ? `${currentDir}/${key}` : key;
                 const link = document.createElement('a');
                 link.href = `/files?dir=${fullPath}`;
-                link.textContent = key;
+                link.textContent = key + (item.isDir ? '' : '');
 
                 li.appendChild(link);
 
-                // Recursively render children for directories
                 if (item.isDir && Object.keys(item.children).length > 0) {
+                    li.classList.add('expandable');
                     renderTree(item.children, li, fullPath);
                 }
 
                 ul.appendChild(li);
             });
+
+            // Show first level by default
+            if (currentDir === '') {
+                ul.classList.remove('hidden');
+            }
 
             parentEl.appendChild(ul);
         }
@@ -229,13 +230,13 @@
                 const isArrowClick = e.target.classList.contains('arrow');
                 const isDirectoryClick = li.classList.contains('directory');
 
-                // Expand/collapse only if it's a directory with children
-                if ((isArrowClick || isDirectoryClick) && li.querySelector('ul')) {
-                    // Prevent default link behavior
+                if ((isArrowClick || isDirectoryClick) && li.classList.contains('expandable')) {
                     e.preventDefault();
-
-                    // Toggle expanded/collapsed state
-                    li.classList.toggle('collapsed');
+                    li.classList.toggle('expanded');
+                    const childUl = li.querySelector('ul');
+                    if (childUl) {
+                        childUl.classList.toggle('hidden');
+                    }
                 }
             });
         });

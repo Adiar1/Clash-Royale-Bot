@@ -107,7 +107,7 @@
             width: 100%;
             max-width: 500px;
             text-align: center;
-            transition: transform 0.3s ease;
+            transition: transform 0.3s ease, opacity 0.3s ease;
             transform-style: preserve-3d;
             will-change: transform;
             position: relative;
@@ -115,6 +115,13 @@
         }
         .container:hover {
             transform: none;
+        }
+        .container.overlay-mode {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+        .container.overlay-mode * {
+            pointer-events: none;
         }
         h1 {
             color: var(--primary-color);
@@ -216,6 +223,7 @@
         let gameStarted = false;
         let baseAnimationDuration = 12; // Base duration in seconds
         let hasClickedBubble = false;
+        let isWKeyDown = false;
 
         function updateScoreColor() {
             const redSteps = Math.min(Math.floor(score / 40), 6);
@@ -226,6 +234,8 @@
         }
 
         function handleMouseMove(e) {
+            if (isWKeyDown) return; // Prevent tilt when W key is held
+
             const rect = container.getBoundingClientRect();
             const centerX = rect.left + rect.width / 2;
             const centerY = rect.top + rect.height / 2;
@@ -244,6 +254,7 @@
         }
 
         function handleMouseLeave() {
+            if (isWKeyDown) return; // Prevent resetting tilt when W key is held
             container.style.transform = 'perspective(1000px) scale(1)';
         }
 
@@ -268,6 +279,22 @@
         const throttledMouseMove = throttle(handleMouseMove, 16);
         container.addEventListener('mousemove', throttledMouseMove);
         container.addEventListener('mouseleave', handleMouseLeave);
+
+        // W key overlay mode
+        document.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'w') {
+                isWKeyDown = true;
+                container.classList.add('overlay-mode');
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key.toLowerCase() === 'w') {
+                isWKeyDown = false;
+                container.classList.remove('overlay-mode');
+                container.style.transform = 'perspective(1000px) scale(1)';
+            }
+        });
 
         // Bubble minigame
         const bubbleContainer = document.getElementById('bubble-container');
