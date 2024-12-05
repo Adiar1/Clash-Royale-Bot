@@ -134,43 +134,55 @@
             flex-direction: column;
             gap: 15px;
             margin-bottom: 30px;
+            align-items: center;
         }
-        .button {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 15px 25px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 1.1rem;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
+        .switch {
             position: relative;
-            overflow: hidden;
+            display: inline-block;
+            width: 120px;
+            height: 60px;
         }
-        .button::before {
-            content: '';
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
             position: absolute;
+            cursor: pointer;
             top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(120deg, transparent, rgba(255,255,255,0.3), transparent);
-            transition: all 0.3s ease;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #4A4A4A;
+            transition: .4s;
+            border-radius: 34px;
         }
-        .button:hover::before {
-            left: 100%;
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 52px;
+            width: 52px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
         }
-        .button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 5px 15px rgba(123, 104, 238, 0.4);
+        input:checked + .slider {
+            background-color: var(--primary-color);
         }
-        .button:disabled {
-            background-color: #5A5A5A;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
+        input:checked + .slider:before {
+            transform: translateX(60px);
+        }
+        .slider-label {
+            margin-top: 10px;
+            font-size: 1rem;
+            color: var(--text-color);
+            transition: color 0.3s ease;
+        }
+        input:checked ~ .slider-label {
+            color: var(--primary-color);
         }
         .nav-links {
             display: flex;
@@ -198,11 +210,16 @@
     <div class="container" id="container">
         <h1>Discord Bot Control</h1>
         <div class="button-group">
-            <form action="/start" method="post">
-                <button type="submit" class="button" {{ "disabled" if bot_running }}>Start Bot</button>
-            </form>
-            <form action="/stop" method="post">
-                <button type="submit" class="button" {{ "disabled" if not bot_running }}>Stop Bot</button>
+            <form id="bot-toggle-form" action="/toggle" method="post">
+                <label class="switch">
+                    <input type="checkbox" name="bot_status" id="bot-toggle"
+                           {{ "checked" if bot_running }}
+                           onchange="this.form.submit()">
+                    <span class="slider"></span>
+                </label>
+                <div class="slider-label">
+                    {{ "Bot Running" if bot_running else "Bot Stopped" }}
+                </div>
             </form>
             <form action="/update" method="post">
                 <button type="submit" class="button">Update Bot</button>
