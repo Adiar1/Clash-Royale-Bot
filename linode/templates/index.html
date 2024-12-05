@@ -134,14 +134,13 @@
             flex-direction: column;
             gap: 15px;
             margin-bottom: 30px;
-            align-items: center;
         }
-        /* Toggle Switch Styles */
         .toggle-switch {
             position: relative;
             display: inline-block;
             width: 120px;
             height: 60px;
+            margin: 0 auto;
         }
         .toggle-switch input {
             opacity: 0;
@@ -162,10 +161,10 @@
         .toggle-slider:before {
             position: absolute;
             content: "";
-            height: 48px;
-            width: 48px;
-            left: 6px;
-            bottom: 6px;
+            height: 52px;
+            width: 52px;
+            left: 4px;
+            bottom: 4px;
             background-color: white;
             transition: .4s;
             border-radius: 50%;
@@ -176,9 +175,11 @@
         .toggle-switch input:checked + .toggle-slider:before {
             transform: translateX(60px);
         }
-        .toggle-switch input:disabled + .toggle-slider {
-            opacity: 0.5;
-            cursor: not-allowed;
+        .toggle-label {
+            display: block;
+            margin-top: 10px;
+            font-size: 1rem;
+            color: var(--text-color);
         }
         .update-button {
             background-color: var(--primary-color);
@@ -193,6 +194,7 @@
             display: inline-block;
             position: relative;
             overflow: hidden;
+            margin-top: 15px;
         }
         .update-button::before {
             content: '';
@@ -237,13 +239,14 @@
     <div class="container" id="container">
         <h1>Discord Bot Control</h1>
         <div class="button-group">
-            <form id="bot-toggle-form" action="/toggle" method="post">
+            <form action="/toggle" method="post">
                 <label class="toggle-switch">
-                    <input type="checkbox" id="bot-toggle" name="bot_status" {{ "checked" if bot_running }}>
+                    <input type="checkbox" name="bot_state" {{ "checked" if bot_running }}>
                     <span class="toggle-slider"></span>
                 </label>
+                <span class="toggle-label">{{ "Bot Running" if bot_running else "Bot Stopped" }}</span>
             </form>
-            <form action="/update" method="post" class="mt-4">
+            <form action="/update" method="post">
                 <button type="submit" class="update-button">Update Bot</button>
             </form>
         </div>
@@ -258,7 +261,8 @@
         // Container tilt effect
         const container = document.getElementById('container');
         const scoreDisplay = document.getElementById('score-display');
-        const botToggle = document.getElementById('bot-toggle');
+        const botToggle = document.querySelector('.toggle-switch input');
+        const toggleLabel = document.querySelector('.toggle-label');
         let score = 0;
         let gameStarted = false;
         let baseAnimationDuration = 12; // Base duration in seconds
@@ -267,8 +271,8 @@
 
         // Add event listener to toggle switch
         botToggle.addEventListener('change', function() {
-            const form = document.getElementById('bot-toggle-form');
-            form.submit();
+            // You might want to add AJAX here to handle the toggle without page reload
+            this.closest('form').submit();
         });
 
         function updateScoreColor() {
