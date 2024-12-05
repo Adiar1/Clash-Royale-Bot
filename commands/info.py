@@ -37,7 +37,7 @@ async def handle_info_command(interaction: Interaction) -> None:
 - `/link [player_tag] [alt_account]` - Link your account
 - `/profile [@user]` - View linked accounts
 - `/wipelinks [@user]` - Remove linked accounts
-- `/forcelink [@user] [player_tag] [alt_account]` - Admin: Force link an account
+- `/forcelink [@user] [player_tag] [alt_account]` - Force link an account
         """,
         inline=False
     )
