@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>File Viewer</title>
+    <title>File Explorer</title>
     <style>
         :root {
             --primary-color: #7B68EE;
@@ -11,7 +11,6 @@
             --secondary-dark: #2C2541;
             --text-color: #E0E0E0;
             --hover-color: #4A3A6D;
-            --arrow-size: 12px;
         }
         * {
             margin: 0;
@@ -22,271 +21,133 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--background-dark);
             color: var(--text-color);
-            line-height: 1.6;
-            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            perspective: 1000px;
+            overflow-x: hidden;
         }
         .container {
             background-color: var(--secondary-dark);
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            padding: 30px;
-            max-width: 1000px;
-            margin: 0 auto;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            width: 100%;
+            max-width: 800px;
+            text-align: center;
+            transition: transform 0.3s ease;
+            transform-style: preserve-3d;
+            will-change: transform;
+            position: relative;
+            z-index: 1;
         }
         h1 {
             color: var(--primary-color);
-            margin-bottom: 20px;
-            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            text-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
         }
         .current-path {
-            text-align: center;
             color: var(--primary-color);
-            margin-bottom: 15px;
-            font-size: 0.9em;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
             opacity: 0.8;
+        }
+        .file-list {
+            text-align: left;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            background-color: var(--background-dark);
+            border-radius: 10px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+        .file-item:hover {
+            background-color: var(--hover-color);
+            transform: scale(1.02);
+        }
+        .file-name {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .file-icon {
+            color: var(--primary-color);
+            font-size: 1.2rem;
+        }
+        .nav-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 10px 15px;
+            background-color: var(--background-dark);
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            display: inline-block;
+            margin-top: 20px;
+        }
+        .nav-link:hover {
+            background-color: var(--hover-color);
+            transform: scale(1.1);
         }
         .back-link {
-            display: block;
-            text-align: center;
+            position: absolute;
+            top: 20px;
+            left: 20px;
             color: var(--primary-color);
             text-decoration: none;
-            margin-bottom: 20px;
-            font-weight: 600;
-        }
-        .file-tree {
-            font-size: 14px;
-            user-select: none;
-        }
-        .file-tree ul {
-            list-style-type: none;
-            padding-left: 20px;
-        }
-        .file-tree li {
-            position: relative;
-            padding: 5px 0 5px 20px;
-            cursor: pointer;
-        }
-        .arrow {
-            position: absolute;
-            left: 0;
-            top: 8px;
-            width: var(--arrow-size);
-            height: var(--arrow-size);
-            cursor: pointer;
-            transition: transform 0.2s ease;
-            display: inline-block;
-        }
-        .arrow::before {
-            content: '';
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            width: 0;
-            height: 0;
-            border-left: calc(var(--arrow-size) / 2) solid var(--text-color);
-            border-top: calc(var(--arrow-size) / 3) solid transparent;
-            border-bottom: calc(var(--arrow-size) / 3) solid transparent;
-            transform: translate(-25%, -50%);
-        }
-        .expanded > .arrow::before {
-            transform: translate(-50%, -50%) rotate(90deg);
-        }
-        .file-tree a {
-            color: var(--text-color);
-            text-decoration: none;
-            transition: color 0.3s ease;
-            display: inline-block;
-            padding: 2px 5px;
-            border-radius: 3px;
-        }
-        .file-tree a:hover {
-            color: var(--primary-color);
-            background-color: var(--hover-color);
-        }
-        .directory > a {
             font-weight: bold;
-            color: var(--primary-color);
+            transition: transform 0.3s ease;
         }
-        .file {
-            opacity: 0.8;
+        .back-link:hover {
+            transform: scale(1.1);
         }
-        .file .arrow {
-            display: none;
+        /* Scrollbar styling */
+        .file-list::-webkit-scrollbar {
+            width: 10px;
         }
-        .hidden {
-            display: none;
+        .file-list::-webkit-scrollbar-track {
+            background: var(--background-dark);
         }
-        /* File icons */
-        .file::before,
-        .directory::before {
-            content: '';
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            margin-right: 5px;
-            vertical-align: middle;
-            background-size: contain;
-            background-repeat: no-repeat;
-        }
-        .directory::before {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%237B68EE'%3E%3Cpath d='M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z'/%3E%3C/svg%3E");
-        }
-        .file::before {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23E0E0E0'%3E%3Cpath d='M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2z'/%3E%3C/svg%3E");
-        }
-        .py-file::before {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232E85FF'%3E%3Cpath d='M12 0a12 12 0 0 0-3 23.5c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.5-1.3-1.3-1.6-1.3-1.6-1-.7.1-.7.1-.7 1.2.1 1.8 1.3 1.8 1.3 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.3.5-2.4 1.3-3.2-.1-.3-.6-1.5.2-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.8 1.7.3 2.9.2 3.2.8.8 1.3 1.9 1.3 3.2 0 4.7-2.8 5.7-5.5 6 .4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 0z'/%3E%3C/svg%3E");
-        }
-        .ipynb-file::before {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23F37726'%3E%3Cpath d='M7.646 16.354c-.645 0-1.17-.524-1.17-1.17v-4.705c0-.645.525-1.17 1.17-1.17h9.708c.645 0 1.17.525 1.17 1.17v4.705c0 .646-.525 1.17-1.17 1.17H7.646zm3.032-1.416c0 .172.141.313.313.313H15c.172 0 .313-.141.313-.313v-3.876A.314.314 0 0 0 15 10.75H11c-.172 0-.313.141-.313.313v3.875z'/%3E%3C/svg%3E");
+        .file-list::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>File Viewer</h1>
-        <div class="current-path" id="currentPath"></div>
-        <a href="/" class="back-link">Go Back</a>
-        <div class="file-tree" id="fileTree">
-            <!-- JavaScript will populate this -->
+        <a href="/" class="back-link">← Back to Dashboard</a>
+        <h1>File Explorer</h1>
+        <div class="current-path">Current Path: {{ current_dir or '/' }}</div>
+
+        <div class="file-list">
+            {% for file in files %}
+                {% if file.is_dir %}
+                    <a href="/files?dir={{ (current_dir + '/' + file.name).lstrip('/') }}" class="file-item">
+                        <div class="file-name">
+                            <span class="file-icon">📁</span>
+                            {{ file.name }}/
+                        </div>
+                        <span>Open Folder</span>
+                    </a>
+                {% else %}
+                    <a href="/files?dir={{ file.path }}" class="file-item">
+                        <div class="file-name">
+                            <span class="file-icon">📄</span>
+                            {{ file.name }}
+                        </div>
+                        <span>View File</span>
+                    </a>
+                {% endif %}
+            {% endfor %}
         </div>
     </div>
-
-    <script>
-        function sanitizePath(path) {
-            // Remove leading and trailing slashes, replace multiple slashes
-            return path.replace(/^\/+|\/+$/g, '').replace(/\/+/g, '/');
-        }
-
-        function getCurrentDirectory() {
-            const urlParams = new URLSearchParams(window.location.search);
-            return sanitizePath(urlParams.get('dir') || '');
-        }
-
-        function organizeFiles(files, currentDir) {
-            const tree = {};
-
-            files.forEach(file => {
-                // Ensure consistent path handling with current directory
-                const fullPath = currentDir ? `${currentDir}/${file.name}` : file.name;
-                const safeName = sanitizePath(fullPath);
-                const pathParts = safeName.split('/').filter(p => p);
-                let current = tree;
-
-                pathParts.forEach((part, index) => {
-                    const isLastPart = index === pathParts.length - 1;
-
-                    if (!current[part]) {
-                        current[part] = {
-                            isDir: file.is_dir || (!isLastPart),
-                            children: {},
-                            fullPath: pathParts.slice(0, index + 1).join('/')
-                        };
-                    }
-
-                    if (isLastPart) {
-                        current[part].isDir = file.is_dir;
-
-                        // Add file type detection
-                        if (!file.is_dir) {
-                            const ext = part.split('.').pop().toLowerCase();
-                            if (ext === 'py') {
-                                current[part].fileType = 'py-file';
-                            } else if (ext === 'ipynb') {
-                                current[part].fileType = 'ipynb-file';
-                            }
-                        }
-                    }
-
-                    current = current[part].children;
-                });
-            });
-
-            return tree;
-        }
-
-        function renderTree(tree, parentEl, currentDir = '') {
-            const ul = document.createElement('ul');
-            ul.classList.add('hidden');
-
-            Object.keys(tree).sort((a, b) => {
-                const aIsDir = tree[a].isDir;
-                const bIsDir = tree[b].isDir;
-                return aIsDir === bIsDir ? a.localeCompare(b) : aIsDir ? -1 : 1;
-            }).forEach(key => {
-                const item = tree[key];
-                const li = document.createElement('li');
-                li.classList.add(item.isDir ? 'directory' : 'file');
-
-                // Add specific file type class for non-directories
-                if (item.fileType) {
-                    li.classList.add(item.fileType);
-                }
-
-                const arrow = document.createElement('span');
-                arrow.classList.add('arrow');
-                li.appendChild(arrow);
-
-                const fullPath = item.fullPath;
-                const link = document.createElement('a');
-                link.href = `/files?dir=${encodeURIComponent(fullPath)}`;
-                link.textContent = key + (item.isDir ? '' : '');
-
-                li.appendChild(link);
-
-                if (item.isDir && Object.keys(item.children).length > 0) {
-                    li.classList.add('expandable');
-                    renderTree(item.children, li, fullPath);
-                }
-
-                ul.appendChild(li);
-            });
-
-            // Show first level by default
-            if (currentDir === '') {
-                ul.classList.remove('hidden');
-            }
-
-            parentEl.appendChild(ul);
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            const currentDir = getCurrentDirectory();
-            const files = [
-                {% for file in files %}
-                {
-                    name: "{{ file.name }}",
-                    is_dir: {{ 'true' if file.is_dir else 'false' }}
-                },
-                {% endfor %}
-            ];
-
-            // Update current path display
-            const currentPathEl = document.getElementById('currentPath');
-            currentPathEl.textContent = currentDir || 'Root Directory';
-
-            const fileTree = document.getElementById('fileTree');
-            const organizedFiles = organizeFiles(files, currentDir);
-            renderTree(organizedFiles, fileTree, currentDir);
-
-            // Toggle directory expansion
-            fileTree.addEventListener('click', (e) => {
-                const li = e.target.closest('li');
-                if (!li) return;
-
-                const isArrowClick = e.target.classList.contains('arrow');
-                const isDirectoryClick = li.classList.contains('directory');
-
-                if ((isArrowClick || isDirectoryClick) && li.classList.contains('expandable')) {
-                    e.preventDefault();
-                    li.classList.toggle('expanded');
-                    const childUl = li.querySelector('ul');
-                    if (childUl) {
-                        childUl.classList.toggle('hidden');
-                    }
-                }
-            });
-        });
-    </script>
 </body>
 </html>
