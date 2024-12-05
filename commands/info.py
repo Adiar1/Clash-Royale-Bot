@@ -34,10 +34,10 @@ async def handle_info_command(interaction: Interaction) -> None:
     embed.add_field(
         name="🔗 Account Linking",
         value="""
-- `/link [player_tag] [alt_account]` - Link your account
+- `/link [player_tag] [alt_account]` - Link your account (non server specific)
+- `/forcelink [@user] [player_tag] [alt_account]` - Force link an account (non server specific)
 - `/profile [@user]` - View linked accounts
 - `/wipelinks [@user]` - Remove linked accounts
-- `/forcelink [@user] [player_tag] [alt_account]` - Force link an account
         """,
         inline=False
     )
@@ -45,13 +45,13 @@ async def handle_info_command(interaction: Interaction) -> None:
     embed.add_field(
         name="⚙️ Server Management",
         value="""
+- `/nicklink [clan_tag] [nickname]` - Link clan tag to nickname (server specific)
 - `/viewnicks` - View clan nicknames in this server
-- `/nicklink [clan_tag] [nickname]` - Link clan tag to nickname
 - `/reminders [channel] [clan_tag]` - Ping member with less than 4 decks used
-- `/editperms` - Edit privileged roles
-- `/editmemberroles` - Edit roles for clan roles
-- `/viewmemberroles` - View roles for clan roles
+- `/editperms` - Edit privileged roles (server specific)
 - `/viewperms` - View privileged roles
+- `/editmemberroles` - Edit roles for clan roles (server specific)
+- `/viewmemberroles` - View roles for clan roles (server specific)
         """,
         inline=False
     )

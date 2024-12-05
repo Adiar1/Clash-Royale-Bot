@@ -184,19 +184,24 @@ async def clan(interaction, clan_tag: str):
 @bot.tree.command(name="whotokick", description="Get recommendations for members to kick from the clan")
 @app_commands.describe(
     clan_tag="Enter either a clan tag or a nickname",
-    n="Number of members to list (1-10)"
+    n="Number of members to list (1-24)"
 )
 async def whotokick(interaction, clan_tag: str, n: int = 5):
+    if not 1 <= n <= 24:
+        await interaction.response.send_message("The number of members to list must be between 1 and 24.", ephemeral=True)
+        return
     await handle_whotokick_command(bot, interaction, clan_tag, n)
 
 @bot.tree.command(name="whotopromote", description="Get recommendations for members who might deserve a promotion")
 @app_commands.describe(
     clan_tag="Enter either a clan tag or a nickname",
-    n="Number of members to list (1-10)"
+    n="Number of members to list (1-24)"
 )
 async def whotopromote(interaction, clan_tag: str, n: int = 5):
+    if not 1 <= n <= 24:
+        await interaction.response.send_message("The number of members to list must be between 1 and 24.", ephemeral=True)
+        return
     await handle_whotopromote_command(bot, interaction, clan_tag, n)
-
 
 @bot.tree.command(name="editmemberroles", description="Edit roles corresponding to Clash Royale positions")
 async def editmemberroles(interaction):
