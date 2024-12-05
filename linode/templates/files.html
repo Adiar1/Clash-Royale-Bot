@@ -38,6 +38,18 @@
             margin-bottom: 20px;
             text-align: center;
         }
+        .breadcrumb {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .breadcrumb a {
+            color: var(--primary-color);
+            text-decoration: none;
+            margin: 0 5px;
+        }
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
         .back-link {
             display: block;
             text-align: center;
@@ -138,6 +150,7 @@
 <body>
     <div class="container">
         <h1>File Viewer</h1>
+        <div class="breadcrumb" id="breadcrumb"></div>
         <a href="/" class="back-link">Go Back</a>
         <div class="file-tree" id="fileTree">
             <!-- JavaScript will populate this -->
@@ -150,13 +163,49 @@
             return path.replace(/^\/+|\/+$/g, '').replace(/\/+/g, '/');
         }
 
-        function organizeFiles(files) {
+        function createBreadcrumbs(currentPath) {
+            const breadcrumbEl = document.getElementById('breadcrumb');
+            breadcrumbEl.innerHTML = '';
+
+            // Create home link
+            const homeLink = document.createElement('a');
+            homeLink.href = '/files';
+            homeLink.textContent = 'Home';
+            breadcrumbEl.appendChild(homeLink);
+
+            if (currentPath) {
+                const pathParts = currentPath.split('/');
+                let accumulatedPath = '';
+
+                pathParts.forEach((part, index) => {
+                    const separator = document.createTextNode(' / ');
+                    breadcrumbEl.appendChild(separator);
+
+                    const link = document.createElement('a');
+                    accumulatedPath += (accumulatedPath ? '/' : '') + part;
+                    link.href = `/files?dir=${encodeURIComponent(accumulatedPath)}`;
+                    link.textContent = part;
+                    breadcrumbEl.appendChild(link);
+                });
+            }
+        }
+
+        function organizeFiles(files, currentPath = '') {
             const tree = {};
 
             files.forEach(file => {
                 // Ensure consistent path handling
                 const safeName = sanitizePath(file.name);
-                const pathParts = safeName.split('/').filter(p => p);
+
+                // If a current path is provided, ensure the file is within that path
+                if (currentPath && !safeName.startsWith(currentPath + '/')) return;
+
+                // Remove the current path prefix for relative path processing
+                const relativePath = currentPath
+                    ? safeName.slice(currentPath.length + 1)
+                    : safeName;
+
+                const pathParts = relativePath.split('/').filter(p => p);
                 let current = tree;
 
                 pathParts.forEach((part, index) => {
@@ -166,7 +215,7 @@
                         current[part] = {
                             isDir: file.is_dir || (!isLastPart),
                             children: {},
-                            fullPath: pathParts.slice(0, index + 1).join('/')
+                            fullPath: (currentPath ? currentPath + '/' : '') + pathParts.slice(0, index + 1).join('/')
                         };
                     }
 
@@ -213,7 +262,7 @@
                 arrow.classList.add('arrow');
                 li.appendChild(arrow);
 
-                const fullPath = currentDir ? `${currentDir}/${key}` : key;
+                const fullPath = item.fullPath || (currentDir ? `${currentDir}/${key}` : key);
                 const link = document.createElement('a');
                 link.href = `/files?dir=${encodeURIComponent(fullPath)}`;
                 link.textContent = key + (item.isDir ? '' : '');
@@ -237,6 +286,10 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Get current directory from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentDir = urlParams.get('dir') || '';
+
             const files = [
                 {% for file in files %}
                 {
@@ -246,9 +299,12 @@
                 {% endfor %}
             ];
 
+            // Create breadcrumbs
+            createBreadcrumbs(currentDir);
+
             const fileTree = document.getElementById('fileTree');
-            const organizedFiles = organizeFiles(files);
-            renderTree(organizedFiles, fileTree);
+            const organizedFiles = organizeFiles(files, currentDir);
+            renderTree(organizedFiles, fileTree, currentDir);
 
             // Toggle directory expansion
             fileTree.addEventListener('click', (e) => {
