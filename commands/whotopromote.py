@@ -1,4 +1,4 @@
-from utils.api import is_real_clan_tag, get_current_clan_members, get_player_info
+from utils.api import is_real_clan_tag, get_current_clan_members
 from utils.scores import get_member_scores
 import discord
 from discord import Interaction, ButtonStyle, SelectOption
@@ -39,7 +39,7 @@ class PlayerSelect(Select):
     def __init__(self, players):
         options = [
             SelectOption(
-                label=f"{i+1}. {player['name']} - {player['role']}",
+                label=f"{i+1}. {player['name']}",
                 value=f"{player['tag']}|{player['weeks']}",
                 description=f"Score: {player['score']:.2f}"
             )
@@ -89,12 +89,8 @@ async def handle_whotopromote_command(bot, interaction: Interaction, input_value
 
         top_performers = []
         for i, (tag, name, score, fame_split, slope_split, weeks_split) in enumerate(sorted_members[:n], 1):
-            # Fetch player info to get their role
-            player_info = await get_player_info(tag)
-            role = player_info.get('role', 'Unknown').capitalize()
-
             embed.add_field(
-                name=f"{i}. `{name}` ({tag}) - {role}",
+                name=f"{i}. `{name}` ({tag})",
                 value=f"**Total Score: {score:.2f}/3630**\n"
                       f"-Fame: {fame_split:.2f}/3600\n"
                       f"-Trend: {'📈' if slope_split >= 10 else '📉'} {abs(slope_split):.2f}/20\n"
@@ -105,8 +101,7 @@ async def handle_whotopromote_command(bot, interaction: Interaction, input_value
                 'name': name,
                 'tag': tag,
                 'weeks': weeks_split,
-                'score': score,
-                'role': role
+                'score': score
             })
 
         if len(sorted_members) < n:
