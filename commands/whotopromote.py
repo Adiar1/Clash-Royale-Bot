@@ -91,7 +91,7 @@ async def handle_whotopromote_command(bot, interaction: Interaction, input_value
         for i, (tag, name, score, fame_split, slope_split, weeks_split) in enumerate(sorted_members[:n], 1):
             trend_emoji = '📈' if slope_split >= 10 else '➡️' if slope_split >= 0 else '📉'
             embed.add_field(
-                name=f"{i}. {name} ({tag})",
+                name=f"{i}. `{name}` ({tag})",
                 value=f"**Total Score: {score:.2f}/100**\n"
                       f"-Fame: {fame_split:.2f}/100\n"
                       f"-Trend: {trend_emoji} {abs(slope_split):.2f}/100\n"

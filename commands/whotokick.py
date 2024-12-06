@@ -88,7 +88,7 @@ async def handle_whotokick_command(bot, interaction: Interaction, input_value: s
         players_to_kick = []
         for i, (tag, name, score, fame_split, slope_split, weeks_split) in enumerate(sorted_members[:n], 1):
             embed.add_field(
-                name=f"{i}. {name} ({tag})",
+                name=f"{i}. `{name}` ({tag})",
                 value=f"**Total Score: {score:.2f}/100**\n"
                       f"-Fame: {fame_split:.2f}/100\n"
                       f"-Trend: {'📈' if slope_split >= 10 else '📉'} {abs(slope_split):.2f}/100\n"
