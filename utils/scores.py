@@ -39,7 +39,7 @@ async def get_member_scores(clan_tag: str):
             slope = 0
 
         # Calculate scores for each component
-        fame_score = min(average_fame / 3600, 1) * 70
+        fame_score = average_fame
 
         # logarithmic slope scoring
         def slope_score(slope):
@@ -56,8 +56,8 @@ async def get_member_scores(clan_tag: str):
 
         # Calculate total score
         total_score = fame_score + slope_score + weeks_old_score
-        fame_breakdown = fame_score * 100 / 70
-        slope_breakdown = slope_score * 100 / 20
+        fame_breakdown = fame_score
+        slope_breakdown = slope_score
         weeks_breakdown = weeks_old_score
 
         return member_tag, member_name, total_score, fame_breakdown, slope_breakdown, weeks_breakdown
