@@ -16,9 +16,9 @@ class InfoButton(Button):
             title="How the Score is Calculated",
             description=(
                 "Score Weights:\n"
-                "• Fame: 70%\n"
-                "• Trend: 20%\n"
-                "• Commitment: 10%\n\n"
+                "• Fame: 99.2%\n"
+                "• Trend: 0.5%\n"
+                "• Commitment: 0.3%\n\n"
                 "Fame: Points scored on a linear model determined by average fame during time in clan\n\n"
                 "Trend: Points scored on a logarithmic model determined by average rate of change in fame per week\n\n"
                 "Commitment: Points scored on a linear model; 0 points for new members, 100 points for members who have been in the clan for at least 10 weeks"
@@ -49,7 +49,7 @@ class PlayerSelect(Select):
 
     async def callback(self, interaction: Interaction):
         player_tag, weeks_old = self.values[0].split('|')
-        from_war = int(round(float(weeks_old) / 10))
+        from_war = int(weeks_old)
         to_war = 1
         await handle_stats_command(interaction, player_tag, from_war, to_war)
 
@@ -89,12 +89,11 @@ async def handle_whotopromote_command(bot, interaction: Interaction, input_value
 
         top_performers = []
         for i, (tag, name, score, fame_split, slope_split, weeks_split) in enumerate(sorted_members[:n], 1):
-            trend_emoji = '📈' if slope_split >= 10 else '➡️' if slope_split >= 0 else '📉'
             embed.add_field(
                 name=f"{i}. `{name}` ({tag})",
-                value=f"**Total Score: {score:.2f}/100**\n"
-                      f"-Fame: {fame_split:.2f}/100\n"
-                      f"-Trend: {trend_emoji} {abs(slope_split):.2f}/100\n"
+                value=f"**Total Score: {score:.2f}/3630**\n"
+                      f"-Fame: {fame_split:.2f}/3600\n"
+                      f"-Trend: {'📈' if slope_split >= 10 else '📉'} {abs(slope_split):.2f}/20\n"
                       f"-Commitment: {weeks_split}/10",
                 inline=False
             )
