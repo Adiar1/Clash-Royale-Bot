@@ -6,11 +6,11 @@ import sqlite3
 from dotenv import load_dotenv
 from functools import wraps
 
-# Load environment variables from .env file
+
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)  # Set a secret key for session management
+app.secret_key = os.urandom(24)
 
 # Paths
 BOT_SCRIPT = os.path.join(os.getcwd(), "main.py")
@@ -21,7 +21,7 @@ TEMPLATES_DIR = os.path.join(BOT_DIR, "linode", "templates")
 
 app.template_folder = TEMPLATES_DIR
 
-BOT_PROCESS = None  # Store the bot process here
+BOT_PROCESS = None
 
 # Password protection
 def login_required(f):
