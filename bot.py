@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from discord import Intents, app_commands, User, TextChannel
 from discord.ext import commands
 
+from commands.spyai import handle_clan_war_spy_command
 from commands.stats import handle_stats_command
 from commands.clan import handle_clan_command
 from commands.editperms import handle_editperms_command
@@ -95,10 +96,11 @@ async def player(interaction, player_tag: str):
 @bot.tree.command(name="link", description="Link, unlink, or update your Discord account with a Clash Royale player tag")
 @app_commands.describe(
     player_tag="The tag of the player",
-    alt_account="Is this an alternate account?"
+    alt_account="Is this an alternate account?",
+    deckai_id="Optional DeckAI ID to link"
 )
-async def link(interaction, player_tag: str, alt_account: bool = False):
-    await handle_link_command(interaction, player_tag, alt_account)
+async def link(interaction, player_tag: str, alt_account: bool = False, deckai_id: str = None):
+    await handle_link_command(interaction, player_tag, alt_account, deckai_id)
 
 @bot.tree.command(name="profile", description="View all player tags linked to your Discord account or someone else's")
 @app_commands.describe(someone_else="Mention another user to see their linked player tags")
@@ -184,24 +186,26 @@ async def clan(interaction, clan_tag: str):
 @bot.tree.command(name="whotokick", description="Get recommendations for members to kick from the clan")
 @app_commands.describe(
     clan_tag="Enter either a clan tag or a nickname",
-    n="Number of members to list (1-24)"
+    n="Number of members to list (1-24)",
+    exclude_leadership="Exclude Co-Leaders and Leaders from kick recommendations"
 )
-async def whotokick(interaction, clan_tag: str, n: int = 5):
+async def whotokick(interaction, clan_tag: str, n: int = 5, exclude_leadership: bool = False):
     if not 1 <= n <= 24:
         await interaction.response.send_message("The number of members to list must be between 1 and 24.", ephemeral=True)
         return
-    await handle_whotokick_command(bot, interaction, clan_tag, n)
+    await handle_whotokick_command(bot, interaction, clan_tag, n, exclude_leadership)
 
 @bot.tree.command(name="whotopromote", description="Get recommendations for members who might deserve a promotion")
 @app_commands.describe(
     clan_tag="Enter either a clan tag or a nickname",
-    n="Number of members to list (1-24)"
+    n="Number of members to list (1-24)",
+    exclude_leadership="Exclude Co-Leaders and Leaders from promotion recommendations"
 )
-async def whotopromote(interaction, clan_tag: str, n: int = 5):
+async def whotopromote(interaction, clan_tag: str, n: int = 5, exclude_leadership: bool = False):
     if not 1 <= n <= 24:
         await interaction.response.send_message("The number of members to list must be between 1 and 24.", ephemeral=True)
         return
-    await handle_whotopromote_command(bot, interaction, clan_tag, n)
+    await handle_whotopromote_command(bot, interaction, clan_tag, n, exclude_leadership)
 
 @bot.tree.command(name="editmemberroles", description="Edit roles corresponding to Clash Royale positions")
 async def editmemberroles(interaction):
@@ -213,6 +217,18 @@ async def editmemberroles(interaction):
 @bot.tree.command(name="viewmemberroles", description="View roles corresponding to Clash Royale positions")
 async def viewmemberroles(interaction):
     await handle_viewmemberroles_command(interaction)
+
+@bot.tree.command(name="spy_ai", description="Get detailed info on opponent's clan war decks")
+@app_commands.describe(
+    account_id="Your DeckAI.app account ID",
+    opponent_player_tag="Enter the opponent's player tag"
+)
+async def clan_war_spy(
+    interaction: discord.Interaction,
+    account_id: str,
+    opponent_player_tag: str
+):
+    await handle_clan_war_spy_command(interaction, account_id, opponent_player_tag)
 
 
 def main():

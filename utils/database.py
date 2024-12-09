@@ -15,7 +15,8 @@ def init_db():
         c.execute('''
             CREATE TABLE IF NOT EXISTS user_links (
                 discord_id INTEGER PRIMARY KEY,
-                player_tags TEXT NOT NULL
+                player_tags TEXT NOT NULL,
+                deckai_id TEXT
             )
         ''')
         c.execute('''
