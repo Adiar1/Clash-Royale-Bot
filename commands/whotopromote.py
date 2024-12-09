@@ -1,4 +1,4 @@
-from utils.api import is_real_clan_tag, get_current_clan_members
+from utils.api import is_real_clan_tag, get_current_clan_members, get_role
 from utils.scores import get_member_scores
 import discord
 from discord import Interaction, ButtonStyle, SelectOption
@@ -54,7 +54,7 @@ class PlayerSelect(Select):
         await handle_stats_command(interaction, player_tag, from_war, to_war)
 
 
-async def handle_whotopromote_command(bot, interaction: Interaction, input_value: str, n: int):
+async def handle_whotopromote_command(bot, interaction: Interaction, input_value: str, n: int, exclude_leadership: bool):
     await interaction.response.defer()
 
     try:
@@ -72,13 +72,29 @@ async def handle_whotopromote_command(bot, interaction: Interaction, input_value
             await interaction.followup.send("Invalid clan tag. Please check and try again.", ephemeral=True)
             return
 
-        # Get clan name
-        clan_name, _ = await get_current_clan_members(clan_tag)
+        # Get clan name and members
+        clan_name, members = await get_current_clan_members(clan_tag)
+
+        # Get roles for each member
+        members_with_roles = []
+        for tag, name in members:
+            role = await get_role(clan_tag, tag)
+            members_with_roles.append((tag, name, role))
 
         member_scores = await get_member_scores(clan_tag)
 
-        # Filter out members with "N/A" scores and sort the rest by score (highest first)
-        sorted_members = sorted([m for m in member_scores if m[2] != "N/A"], key=lambda x: x[2], reverse=True)
+        # Filter out members with "N/A" scores
+        filtered_scores = [m for m in member_scores if m[2] != "N/A"]
+
+        # If exclude_leadership is True, remove co-leaders and leaders
+        if exclude_leadership:
+            filtered_scores = [
+                m for m in filtered_scores
+                if next((role for t, n, role in members_with_roles if t == m[0]), '') not in ['coLeader', 'leader']
+            ]
+
+        # Sort the filtered members by score (highest first)
+        sorted_members = sorted(filtered_scores, key=lambda x: x[2], reverse=True)
 
         # Create embed
         embed = discord.Embed(
@@ -87,10 +103,22 @@ async def handle_whotopromote_command(bot, interaction: Interaction, input_value
             color=0x1E133E
         )
 
+        # Role display mapping
+        role_display_map = {
+            "member": "Member",
+            "elder": "Elder",
+            "leader": "Leader",
+            "coLeader": "Co-leader"
+        }
+
         top_performers = []
         for i, (tag, name, score, fame_split, slope_split, weeks_split) in enumerate(sorted_members[:n], 1):
+            # Find the role for this member
+            member_role = next((role for t, n, role in members_with_roles if t == tag), "Unknown")
+            role_display = role_display_map.get(member_role, member_role)
+
             embed.add_field(
-                name=f"{i}. `{name}` ({tag})",
+                name=f"{i}. `{name}` ({tag}) | {role_display}",
                 value=f"**Total Score: {score:.2f}/3630**\n"
                       f"-Fame: {fame_split:.2f}/3600\n"
                       f"-Trend: {'📈' if slope_split >= 10 else '📉'} {abs(slope_split):.2f}/20\n"
@@ -101,7 +129,8 @@ async def handle_whotopromote_command(bot, interaction: Interaction, input_value
                 'name': name,
                 'tag': tag,
                 'weeks': weeks_split,
-                'score': score
+                'score': score,
+                'role': role_display
             })
 
         if len(sorted_members) < n:
@@ -122,6 +151,10 @@ async def handle_whotopromote_command(bot, interaction: Interaction, input_value
                       f"\n`{excluded_names}`",
                 inline=False
             )
+
+        # If leadership was excluded, add a note about that
+        if exclude_leadership:
+            embed.set_footer(text="Co-Leaders and Leaders were excluded from recommendations")
 
         # Create a View with the PlayerSelect and InfoButton
         view = PlayerSelectView(top_performers)

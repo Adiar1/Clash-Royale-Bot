@@ -10,7 +10,10 @@ load_dotenv()
 # Constants
 TOKEN: Final[str] = os.getenv('DISCORD_TOKEN')
 CLASH_ROYALE_API_KEY: Final[str] = os.getenv('CLASH_ROYALE_API_KEY')
+DECK_AI_API_KEY: Final[str] = os.getenv('DECKAI_API_KEY')
 CLASH_ROYALE_API_BASE_URL: Final[str] = 'https://api.clashroyale.com/v1'
+DECK_AI_API_BASE_URL: Final[str] = 'https://deckai.app/api'
+
 TROPHYROAD_EMOJI: Final[str] = '<:trophyroad:1259911930802343959>'
 FAME_EMOJI: Final[str] = '<:fame:1260376280767922246>'
 NEW_MEMBER_EMOJI: Final[str] = '🆕'
@@ -288,41 +291,56 @@ def get_all_player_tags(discord_id):
         return []
 
 
-def link_player_tag(discord_id, player_tag, alt=False):
+def link_player_tag(discord_id, player_tag, alt=False, deckai_id=None):
     try:
         conn = sqlite3.connect(DATABASE_NAME)
         c = conn.cursor()
 
-        c.execute('SELECT player_tags FROM user_links WHERE discord_id = ?', (discord_id,))
+        c.execute('SELECT player_tags, deckai_id FROM user_links WHERE discord_id = ?', (discord_id,))
         result = c.fetchone()
 
         if result:
-            existing_tags = result[0].split(',')
+            existing_tags = result[0].split(',') if result[0] else []
+            existing_deckai_id = result[1]
+
             if alt:
-                if player_tag not in existing_tags:
-                    existing_tags.append(player_tag)
-                    c.execute('UPDATE user_links SET player_tags = ? WHERE discord_id = ?', (','.join(existing_tags), discord_id))
-                    conn.commit()
+                if not existing_tags:
                     conn.close()
-                    return "linked"
-                else:
+                    return "no_main_tag"
+                if len(existing_tags) >= 20:
+                    conn.close()
+                    return "too_many_tags"
+                if player_tag in existing_tags:
                     conn.close()
                     return "exists"
+                existing_tags.append(player_tag)
+                tags_to_update = ','.join(existing_tags)
             else:
-                existing_tags[0] = player_tag
-                c.execute('UPDATE user_links SET player_tags = ? WHERE discord_id = ?', (','.join(existing_tags), discord_id))
-                conn.commit()
-                conn.close()
-                return "updated"
+                existing_tags = [player_tag] + existing_tags[1:] if existing_tags else [player_tag]
+                tags_to_update = ','.join(existing_tags)
+
+            # Update deckai_id if provided
+            if deckai_id is not None:
+                c.execute('UPDATE user_links SET player_tags = ?, deckai_id = ? WHERE discord_id = ?',
+                          (tags_to_update, deckai_id, discord_id))
+            else:
+                c.execute('UPDATE user_links SET player_tags = ? WHERE discord_id = ?',
+                          (tags_to_update, discord_id))
+
+            conn.commit()
+            conn.close()
+            return "updated" if not alt else "linked"
         else:
-            c.execute('INSERT INTO user_links (discord_id, player_tags) VALUES (?, ?)', (discord_id, player_tag))
+            # Insert new record
+            deckai_id_to_insert = deckai_id if deckai_id is not None else None
+            c.execute('INSERT INTO user_links (discord_id, player_tags, deckai_id) VALUES (?, ?, ?)',
+                      (discord_id, player_tag, deckai_id_to_insert))
             conn.commit()
             conn.close()
             return "linked"
     except sqlite3.Error as e:
         logger.error(f"Database error: {e}")
         return None
-
 
 def get_linked_discord_id(player_tag):
     try:
@@ -390,3 +408,66 @@ def get_member_roles(guild_id):
     except sqlite3.Error as e:
         logger.error(f"Database error: {e}")
         return None
+
+
+def get_deckai_id(discord_id):
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        c = conn.cursor()
+        c.execute('SELECT deckai_id FROM user_links WHERE discord_id = ?', (discord_id,))
+        result = c.fetchone()
+        conn.close()
+        return result[0] if result and result[0] else None
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
+        return None
+
+
+def update_deckai_id(discord_id, deckai_id):
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        c = conn.cursor()
+
+        # Check if the user exists
+        c.execute('SELECT * FROM user_links WHERE discord_id = ?', (discord_id,))
+        existing_user = c.fetchone()
+
+        if existing_user:
+            # Update existing user
+            c.execute('UPDATE user_links SET deckai_id = ? WHERE discord_id = ?', (deckai_id, discord_id))
+        else:
+            # Insert new user with empty player tags
+            c.execute('INSERT INTO user_links (discord_id, player_tags, deckai_id) VALUES (?, ?, ?)',
+                      (discord_id, '', deckai_id))
+
+        conn.commit()
+        conn.close()
+        return True
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
+        return False
+
+
+def delete_deckai_id(discord_id):
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        c = conn.cursor()
+        c.execute('UPDATE user_links SET deckai_id = NULL WHERE discord_id = ?', (discord_id,))
+        conn.commit()
+        conn.close()
+        return True
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
+        return False
+
+def card_name_to_png(card_name: str) -> str:
+    # Remove "Evolved" and strip any extra whitespace
+    updated_name = card_name.replace("Evolved", "").strip()
+    # Replace spaces with '-'
+    updated_name = updated_name.replace(" ", "-")
+    # If "Evolved" was in the original name, add '-ev1' to the end
+    if "Evolved" in card_name:
+        updated_name += "-ev1"
+    url_end = updated_name.lower()
+    card_png = f"https://cdns3.royaleapi.com/cdn-cgi/image/w=150,h=180,format=auto/static/img/cards/v4-aba2f5ae/{url_end}.png"
+    return card_png

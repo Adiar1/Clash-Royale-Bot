@@ -2,8 +2,10 @@ import urllib.parse
 import time
 from utils.helpers import sanitize_tag, CLASH_ROYALE_API_BASE_URL, CLASH_ROYALE_API_KEY
 import urllib.parse
+from utils.helpers import DECK_AI_API_KEY, DECK_AI_API_BASE_URL
 import aiohttp
 from typing import List, Tuple
+
 
 # Cache setup
 cache = {}
@@ -545,3 +547,21 @@ async def get_tournament_info(tournament_tag: str) -> Tuple[str, List[Tuple[str,
 
     return "Unknown Tournament", []
 
+async def get_clan_war_spy_info(account_id: str, opponent_player_tag: str) -> dict:
+    url = f"{DECK_AI_API_BASE_URL}/clan-war-spy"
+    params = {
+        "accountId": account_id,
+        "opponentPlayerTag": opponent_player_tag
+    }
+    headers = {
+        "api-key": DECK_AI_API_KEY
+    }
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, params=params, headers=headers) as response:
+            if response.status == 200:
+                return await response.json()
+            else:
+                # Handle error cases
+                print(f"Error: {response.status}")
+                return {}
