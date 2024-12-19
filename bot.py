@@ -220,16 +220,15 @@ async def viewmemberroles(interaction):
 
 @bot.tree.command(name="spy_ai", description="Get detailed info on opponent's clan war decks")
 @app_commands.describe(
-    account_id="Your DeckAI.app account ID",
-    opponent_player_tag="Enter the opponent's player tag"
+    opponent_player_tag="Enter the opponent's player tag",
+    someone_else="Optionally mention another user whose DeckAI account to use"
 )
 async def clan_war_spy(
     interaction: discord.Interaction,
-    account_id: str,
-    opponent_player_tag: str
+    opponent_player_tag: str,
+    someone_else: User = None
 ):
-    await handle_clan_war_spy_command(interaction, account_id, opponent_player_tag)
-
+    await handle_clan_war_spy_command(interaction, opponent_player_tag, someone_else)
 
 def main():
     load_dotenv()
