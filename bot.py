@@ -127,9 +127,9 @@ async def wipelinks(interaction, someone_else: User = None):
     deckai_id="Optional DeckAI ID to link",
     alt_account="Is this an alternate account?"
 )
-async def forcelink(interaction, target_user: User, player_tag: str, alt_account: bool = False):
+async def forcelink(interaction, target_user: User, player_tag: str, alt_account: bool = False, deckai_id: str = None):
     if await is_privileged(interaction):
-        await handle_forcelink_command(interaction, target_user, player_tag, alt_account)
+        await handle_forcelink_command(interaction, target_user, player_tag, alt_account, deckai_id)
     else:
         await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
 
