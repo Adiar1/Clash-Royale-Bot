@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, send_file, abort, session
 import os
 import subprocess
-import signal
 import sqlite3
 from dotenv import load_dotenv
 from functools import wraps
