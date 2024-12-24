@@ -96,8 +96,9 @@ async def player(interaction, player_tag: str):
 @bot.tree.command(name="link", description="Link, unlink, or update your Discord account with a Clash Royale player tag")
 @app_commands.describe(
     player_tag="The tag of the player",
+    deckai_id="Optional DeckAI ID to link",
     alt_account="Is this an alternate account?",
-    deckai_id="Optional DeckAI ID to link"
+
 )
 async def link(interaction, player_tag: str, alt_account: bool = False, deckai_id: str = None):
     await handle_link_command(interaction, player_tag, alt_account, deckai_id)
@@ -123,6 +124,7 @@ async def wipelinks(interaction, someone_else: User = None):
 @app_commands.describe(
     target_user="Mention the user to link the player tag to",
     player_tag="The tag of the player",
+    deckai_id="Optional DeckAI ID to link",
     alt_account="Is this an alternate account?"
 )
 async def forcelink(interaction, target_user: User, player_tag: str, alt_account: bool = False):
