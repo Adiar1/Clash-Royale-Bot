@@ -296,12 +296,11 @@ def link_player_tag(discord_id, player_tag, alt=False, deckai_id=None):
         conn = sqlite3.connect(DATABASE_NAME)
         c = conn.cursor()
 
-        c.execute('SELECT player_tags, deckai_id FROM user_links WHERE discord_id = ?', (discord_id,))
+        c.execute('SELECT player_tags FROM user_links WHERE discord_id = ?', (discord_id,))
         result = c.fetchone()
 
         if result:
             existing_tags = result[0].split(',') if result[0] else []
-            existing_deckai_id = result[1]
 
             if alt:
                 if not existing_tags:
@@ -319,29 +318,25 @@ def link_player_tag(discord_id, player_tag, alt=False, deckai_id=None):
                 existing_tags = [player_tag] + existing_tags[1:] if existing_tags else [player_tag]
                 tags_to_update = ','.join(existing_tags)
 
-            # Update deckai_id if provided
-            if deckai_id is not None:
-                c.execute('UPDATE user_links SET player_tags = ?, deckai_id = ? WHERE discord_id = ?',
-                          (tags_to_update, deckai_id, discord_id))
-            else:
-                c.execute('UPDATE user_links SET player_tags = ? WHERE discord_id = ?',
-                          (tags_to_update, discord_id))
-
-            conn.commit()
-            conn.close()
-            return "updated" if not alt else "linked"
+            c.execute('UPDATE user_links SET player_tags = ? WHERE discord_id = ?',
+                      (tags_to_update, discord_id))
         else:
-            # Insert new record
-            deckai_id_to_insert = deckai_id if deckai_id is not None else None
-            c.execute('INSERT INTO user_links (discord_id, player_tags, deckai_id) VALUES (?, ?, ?)',
-                      (discord_id, player_tag, deckai_id_to_insert))
-            conn.commit()
-            conn.close()
-            return "linked"
+            c.execute('INSERT INTO user_links (discord_id, player_tags) VALUES (?, ?)',
+                      (discord_id, player_tag))
+
+        conn.commit()
+        conn.close()
+
+        # Handle DeckAI ID separately
+        if deckai_id:
+            link_deckai_id(player_tag, deckai_id)
+
+        return "linked"
     except sqlite3.Error as e:
         logger.error(f"Database error: {e}")
         return None
 
+    
 def get_linked_discord_id(player_tag):
     try:
         # Strip '#' and capitalize the tag
@@ -410,36 +405,37 @@ def get_member_roles(guild_id):
         return None
 
 
-def get_deckai_id(discord_id):
+def get_deckai_id(player_tag):
     try:
         conn = sqlite3.connect(DATABASE_NAME)
         c = conn.cursor()
-        c.execute('SELECT deckai_id FROM user_links WHERE discord_id = ?', (discord_id,))
+        c.execute('SELECT deckai_id FROM deckai_links WHERE player_tag = ?', (player_tag,))
         result = c.fetchone()
         conn.close()
-        return result[0] if result and result[0] else None
+        return result[0] if result else None
     except sqlite3.Error as e:
         logger.error(f"Database error: {e}")
         return None
 
 
-def update_deckai_id(discord_id, deckai_id):
+def update_deckai_id(player_tag, deckai_id):
     try:
         conn = sqlite3.connect(DATABASE_NAME)
         c = conn.cursor()
+        c.execute('INSERT OR REPLACE INTO deckai_links (player_tag, deckai_id) VALUES (?, ?)',
+                  (player_tag, deckai_id))
+        conn.commit()
+        conn.close()
+        return True
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
+        return False
 
-        # Check if the user exists
-        c.execute('SELECT * FROM user_links WHERE discord_id = ?', (discord_id,))
-        existing_user = c.fetchone()
-
-        if existing_user:
-            # Update existing user
-            c.execute('UPDATE user_links SET deckai_id = ? WHERE discord_id = ?', (deckai_id, discord_id))
-        else:
-            # Insert new user with empty player tags
-            c.execute('INSERT INTO user_links (discord_id, player_tags, deckai_id) VALUES (?, ?, ?)',
-                      (discord_id, '', deckai_id))
-
+def delete_deckai_id(player_tag):
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        c = conn.cursor()
+        c.execute('DELETE FROM deckai_links WHERE player_tag = ?', (player_tag,))
         conn.commit()
         conn.close()
         return True
@@ -448,11 +444,24 @@ def update_deckai_id(discord_id, deckai_id):
         return False
 
 
-def delete_deckai_id(discord_id):
+def link_deckai_id(player_tag: str, deckai_id: str):
     try:
         conn = sqlite3.connect(DATABASE_NAME)
         c = conn.cursor()
-        c.execute('UPDATE user_links SET deckai_id = NULL WHERE discord_id = ?', (discord_id,))
+        c.execute('INSERT OR REPLACE INTO deckai_links (player_tag, deckai_id) VALUES (?, ?)',
+                  (player_tag, deckai_id))
+        conn.commit()
+        conn.close()
+        return True
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
+        return False
+
+def unlink_deckai_id(player_tag: str):
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        c = conn.cursor()
+        c.execute('DELETE FROM deckai_links WHERE player_tag = ?', (player_tag,))
         conn.commit()
         conn.close()
         return True

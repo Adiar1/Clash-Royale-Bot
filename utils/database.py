@@ -15,8 +15,13 @@ def init_db():
         c.execute('''
             CREATE TABLE IF NOT EXISTS user_links (
                 discord_id INTEGER PRIMARY KEY,
-                player_tags TEXT NOT NULL,
-                deckai_id TEXT
+                player_tags TEXT NOT NULL
+            )
+        ''')
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS deckai_links (
+                player_tag TEXT PRIMARY KEY,
+                deckai_id TEXT NOT NULL
             )
         ''')
         c.execute('''
@@ -44,6 +49,6 @@ def init_db():
 
         conn.commit()
         conn.close()
-        logger.info("Database updated with automated_reminders table.")
+        logger.info("Database initialized successfully.")
     except sqlite3.Error as e:
         logger.error(f"Database error: {e}")
