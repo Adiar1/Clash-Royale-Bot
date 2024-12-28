@@ -6,15 +6,15 @@ from utils.helpers import (
     CLASH_ROYALE_API_KEY,
     get_all_player_tags,
     link_player_tag,
-    update_player_tags
+    update_player_tags, link_deckai_id, unlink_deckai_id
 )
 
 
 class PlayerTagView(View):
-    def __init__(self, player_tag: str, target_user: User, deckai_id: str = None):
+    def __init__(self, player_tag: str, target_user: User = None, deckai_id: str = None):
         super().__init__()
         self.player_tag = player_tag
-        self.target_user = target_user
+        self.target_user = target_user or None
         self.deckai_id = deckai_id
 
         # Update button
@@ -33,34 +33,48 @@ class PlayerTagView(View):
         self.add_item(alt_btn)
 
     async def update_callback(self, interaction: Interaction):
-        result = link_player_tag(str(self.target_user.id), self.player_tag, alt=False, deckai_id=self.deckai_id)
+        user_id = str(self.target_user.id if self.target_user else interaction.user.id)
+        result = link_player_tag(user_id, self.player_tag, alt=False)
+
+        if result and self.deckai_id:
+            link_deckai_id(self.player_tag, self.deckai_id)
+
         additional_msg = f" and DeckAI ID `{self.deckai_id}`" if self.deckai_id else ""
+        user_mention = self.target_user.mention if self.target_user else "your Discord account"
         await interaction.response.send_message(
-            f"Player tag `#{self.player_tag}`{additional_msg} updated in {self.target_user.mention}'s account.")
+            f"Player tag `#{self.player_tag}`{additional_msg} updated in {user_mention}.")
 
     async def unlink_callback(self, interaction: Interaction):
-        user_id = str(self.target_user.id)
+        user_id = str(self.target_user.id if self.target_user else interaction.user.id)
         current_tags = get_all_player_tags(user_id)
         updated_tags = [tag for tag in current_tags if tag != self.player_tag]
 
         success = update_player_tags(user_id, ','.join(updated_tags))
         if success:
+            # Also remove DeckAI ID if it exists
+            unlink_deckai_id(self.player_tag)
+            user_mention = self.target_user.mention if self.target_user else "your Discord account"
             await interaction.response.send_message(
-                f"Player tag `#{self.player_tag}` unlinked from {self.target_user.mention}'s account.")
+                f"Player tag `#{self.player_tag}` unlinked from {user_mention}.")
         else:
             await interaction.response.send_message(
                 "An error occurred while unlinking the player tag. Please try again later.")
 
     async def alt_callback(self, interaction: Interaction):
-        current_tags = get_all_player_tags(str(self.target_user.id))
+        user_id = str(self.target_user.id if self.target_user else interaction.user.id)
+        current_tags = get_all_player_tags(user_id)
         if len(current_tags) >= 20:
             await interaction.response.send_message("You can't link more than 20 tags.")
             return
 
-        result = link_player_tag(str(self.target_user.id), self.player_tag, alt=True, deckai_id=self.deckai_id)
+        result = link_player_tag(user_id, self.player_tag, alt=True)
+        if result and self.deckai_id:
+            link_deckai_id(self.player_tag, self.deckai_id)
+
         additional_msg = f" with DeckAI ID `{self.deckai_id}`" if self.deckai_id else ""
+        user_mention = self.target_user.mention if self.target_user else "your account"
         await interaction.response.send_message(
-            f"Player tag `#{self.player_tag}`{additional_msg} linked as an alt account to {self.target_user.mention}'s account.")
+            f"Player tag `#{self.player_tag}`{additional_msg} linked as an alt account to {user_mention}.")
 
 
 async def handle_forcelink_command(interaction: Interaction, target_user: User, player_tag: str, alt_account: bool, deckai_id: str = None):
