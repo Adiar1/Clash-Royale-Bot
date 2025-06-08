@@ -31,6 +31,7 @@ from commands.wipelinks import handle_wipelinks_command
 from utils.database import init_db
 from commands.editmemberroles import handle_editmemberroles_command
 from utils.helpers import is_privileged, get_privileged_roles
+from commands.viewlinks import handle_viewlinks_command
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -219,6 +220,13 @@ async def editmemberroles(interaction):
 @bot.tree.command(name="viewmemberroles", description="View roles corresponding to Clash Royale positions")
 async def viewmemberroles(interaction):
     await handle_viewmemberroles_command(interaction)
+
+
+@bot.tree.command(name="viewlinks", description="List all players in a clan")
+@app_commands.describe(clan_tag="Enter either a clan tag or nickname")
+async def viewlinks(interaction, clan_tag: str):
+    await handle_viewlinks_command(interaction, clan_tag)
+
 
 @bot.tree.command(name="spy_ai", description="Get detailed info on opponent's clan war decks")
 @app_commands.describe(
