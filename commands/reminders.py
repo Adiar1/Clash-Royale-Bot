@@ -1,6 +1,6 @@
 from discord import Interaction, TextChannel
 from utils.api import get_decks_used_today, get_current_clan_members
-from utils.helpers import get_discord_id_from_tag, get_clan_tag_by_nickname
+from utils.helpers import get_discord_id_from_tag, get_clan_tag_by_nickname, sanitize_tag
 from prettytable import PrettyTable
 
 DISCORD_MESSAGE_LIMIT = 1800
@@ -10,7 +10,7 @@ async def handle_reminders_command(interaction: Interaction, channel: TextChanne
 
     try:
         # Normalize the input to uppercase to handle case insensitivity
-        input_value = input_value.lstrip('#').upper()
+        input_value = sanitize_tag(input_value)
 
         # Determine if input is a clan tag or a nickname
         if len(input_value) < 5:

@@ -4,7 +4,7 @@ from discord.ui import View, Select, Button
 from utils.api import get_weeks_ago_joined, get_average_fame_for_members, is_real_clan_tag
 import io
 import csv
-from utils.helpers import FAME_EMOJI, get_clan_tag_by_nickname
+from utils.helpers import FAME_EMOJI, get_clan_tag_by_nickname, sanitize_tag
 
 
 class SelectDataOrder(Select):
@@ -104,7 +104,7 @@ async def handle_clan_command(bot, interaction: Interaction, user_message: str,
                               arrange_data_order: str = "name_weeks_fame",
                               edit_mode: bool = False) -> None:
     parts = user_message.split()
-    input_value = parts[1].lstrip('#')
+    input_value = sanitize_tag(parts[1])
 
     if len(input_value) < 5:
         clan_tag = get_clan_tag_by_nickname(input_value, interaction.guild.id)

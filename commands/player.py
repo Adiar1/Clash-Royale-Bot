@@ -11,7 +11,7 @@ from utils.api import get_player_trophies, get_player_clan_info, get_player_badg
 
 
 async def handle_player_command(interaction: Interaction, user_or_tag: str):
-    player_tag = user_or_tag.lstrip('#').upper() if not user_or_tag.startswith('<@') else get_player_tag_from_mention(
+    player_tag = sanitize_tag(user_or_tag) if not user_or_tag.startswith('<@') else get_player_tag_from_mention(
         user_or_tag, str(interaction.guild.id))
 
     if not player_tag:

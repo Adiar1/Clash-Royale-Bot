@@ -14,7 +14,7 @@ from commands.forcelink import handle_forcelink_command
 from commands.nthwar import handle_nthwar_command
 from commands.player import handle_player_command
 from commands.link import handle_link_command
-from commands.profile import handle_viewlinks_command
+from commands.profile import handle_profile_command
 from commands.currentwar import handle_currentwar_command
 from commands.lastwar import handle_lastwar_command
 from commands.members import handle_members_command
@@ -106,8 +106,8 @@ async def link(interaction, player_tag: str, alt_account: bool = False, deckai_i
 
 @bot.tree.command(name="profile", description="View all player tags linked to your Discord account or someone else's")
 @app_commands.describe(someone_else="Mention another user to see their linked player tags")
-async def viewlinks(interaction, someone_else: User = None):
-    await handle_viewlinks_command(interaction, someone_else)
+async def profile(interaction, someone_else: User = None):
+    await handle_profile_command(interaction, someone_else)
 
 @bot.tree.command(name="viewnicks", description="View all clan nicknames in this server")
 async def viewnicks(interaction):
@@ -134,12 +134,12 @@ async def forcelink(interaction, target_user: User, player_tag: str, alt_account
     else:
         await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
 
-@bot.tree.command(name="nicklink", description="Link a clan tag to a nickname")
+@bot.tree.command(name="nicklink", description="Link a clan tag to a nickname or delete an existing nickname (leave nickname empty to delete)")
 @app_commands.describe(
     clan_tag="The tag of the clan",
-    nickname="The nickname to associate with the clan"
+    nickname="The nickname to associate with the clan (leave empty to delete existing nickname)"
 )
-async def nicklink(interaction, clan_tag: str, nickname: str):
+async def nicklink(interaction, clan_tag: str, nickname: str = None):
     if await is_privileged(interaction):
         await handle_nicklink_command(interaction, clan_tag, nickname)
     else:

@@ -1,256 +1,272 @@
 import discord
 from discord import Interaction, User
 from utils.api import get_clan_war_spy_info
-from utils.helpers import get_deckai_id, card_name_to_png
-import io
-import requests
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from utils.helpers import sanitize_tag, get_all_player_tags, get_deckai_id
 import logging
-import os
+import json
 
 logger = logging.getLogger(__name__)
 
 
-def get_font_path():
-    """Get the path to the Clash font."""
-    font_path = 'assets/Clash_Regular.otf'
-    if not os.path.exists(font_path):
-        raise FileNotFoundError(
-            f"Font file not found at {font_path}. Please ensure Clash_Regular.otf is in the assets directory.")
-    return font_path
+def format_card_list(cards):
+    """Format a list of cards into a readable string"""
+    if not cards or not isinstance(cards, list):
+        return "No cards found"
+
+    card_strings = []
+    for card in cards:
+        if isinstance(card, dict):
+            name = card.get('name', 'Unknown Card')
+            level = card.get('level', '?')
+            card_strings.append(f"{name} (Lvl {level})")
+        else:
+            card_strings.append(str(card))
+
+    return ", ".join(card_strings)
 
 
-def download_image(url, max_size=(120, 120)):
-    """
-    Download and resize an image from a URL.
+def format_win_rates(win_rates):
+    """Format win rates into a readable string"""
+    if not win_rates or not isinstance(win_rates, list):
+        return "No win rate data"
 
-    Args:
-        url (str): URL of the image to download
-        max_size (tuple): Maximum size to resize the image to (width, height)
-
-    Returns:
-        PIL.Image or None: Processed image or None if download fails
-    """
     try:
-        response = requests.get(url)
-        if response.status_code == 200:
-            img = Image.open(io.BytesIO(response.content))
-
-            # Resize the image while maintaining aspect ratio
-            img.thumbnail(max_size, Image.LANCZOS)
-
-            # Create a white background image
-            background = Image.new('RGBA', max_size, (255, 255, 255, 255))
-
-            # Calculate position to center the image
-            offset = ((max_size[0] - img.width) // 2, (max_size[1] - img.height) // 2)
-
-            # Paste the resized image onto the white background
-            background.paste(img, offset, img if img.mode == 'RGBA' else None)
-
-            return background
-        return None
-    except Exception as e:
-        logger.error(f"Error downloading image {url}: {e}")
-        return None
+        formatted_rates = [f"{float(rate) * 100:.1f}%" for rate in win_rates if rate is not None]
+        return " | ".join(formatted_rates) if formatted_rates else "No win rate data"
+    except (ValueError, TypeError):
+        return "Invalid win rate data"
 
 
-def create_clan_war_spy_image(war_data):
-    """
-    Create a visual representation of the clan war spy data
+def format_date(date_str):
+    """Format date string into a more readable format"""
+    if not date_str:
+        return "Unknown Date"
 
-    Args:
-        war_data (dict): Clan war data
-    """
     try:
-        font_path = get_font_path()
+        from datetime import datetime
+        date_obj = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+        return date_obj.strftime('%Y-%m-%d %H:%M UTC')
+    except:
+        return date_str
 
-        # Create a white background image
-        img_width = 1400
-        img_height = 1500  # Increased height
-        background_color = (240, 243, 249)
-        img = Image.new('RGB', (img_width, img_height), color=background_color)
-        draw = ImageDraw.Draw(img)
 
-        # Load fonts
-        title_font = ImageFont.truetype(font_path, 48)
-        subtitle_font = ImageFont.truetype(font_path, 36)
-        level_font = ImageFont.truetype(font_path, 20)
-        stats_font = ImageFont.truetype(font_path, 20)
+def create_spy_text_output(war_data):
+    """Create a text-based output of the clan war spy data"""
+    if not isinstance(war_data, dict):
+        return "❌ **Error:** Invalid data format received from API"
 
-        # Colors
-        title_color = (44, 54, 137)
-        subtitle_color = (66, 82, 175)
-        text_color = (50, 50, 50)
-        stats_color = (100, 100, 100)
+    if not war_data:
+        return "❌ **No data found** - The opponent might not have any recent clan war activity"
 
-        # Title with decorative underline
-        title_y = 50
-        draw.text((img_width // 2, title_y), "Clan War Spy Report",
-                  fill=title_color, anchor="mm", font=title_font)
+    output_lines = ["🕵️ **Clan War Spy Report**", ""]
 
-        # Draw underline
-        line_y = title_y + 40
-        draw.line([(400, line_y), (1000, line_y)], fill=title_color, width=3)
+    # Check if we have opponent decks data
+    opponent_decks = war_data.get('opponentDecks', [])
 
-        opponent_decks = war_data.get('opponentDecks', [])
+    if not opponent_decks:
+        output_lines.extend([
+            "❌ **No opponent deck data found**",
+            "",
+            "**Raw API Response:**",
+            f"```json\n{json.dumps(war_data, indent=2)}\n```"
+        ])
+        return "\n".join(output_lines)
 
-        for idx, deck_data in enumerate(opponent_decks):
-            cards = deck_data.get('deck', [])
-            game_mode = deck_data.get('gameMode', 'Unknown Mode')
-            date = deck_data.get('date', '')
-            win_rates = deck_data.get('winRates', [])
+    output_lines.append(f"📊 **Found {len(opponent_decks)} deck(s)**")
+    output_lines.append("")
 
-            # Format date
-            try:
-                from datetime import datetime
-                date_obj = datetime.fromisoformat(date.replace('Z', '+00:00'))
-                formatted_date = date_obj.strftime('%Y-%m-%d %H:%M')
-            except:
-                formatted_date = date
+    for idx, deck_data in enumerate(opponent_decks, 1):
+        if not isinstance(deck_data, dict):
+            output_lines.append(f"⚠️ **Deck {idx}:** Invalid data format")
+            continue
 
-            # Position calculation with more spacing
-            column = idx % 2
-            row = idx // 2
-            base_x = 120 + column * (img_width // 2)
-            base_y = 180 + row * 450  # Increased vertical spacing between rows
+        # Get deck information
+        cards = deck_data.get('deck', [])
+        game_mode = deck_data.get('gameMode', 'Unknown Mode')
+        date = deck_data.get('date', '')
+        win_rates = deck_data.get('winRates', [])
 
-            # Section background
-            section_padding = 20
-            section_width = 550
-            section_height = 400  # Increased height
-            section_x = base_x - section_padding
-            section_y = base_y - section_padding
+        # Format the deck section
+        output_lines.extend([
+            f"🃏 **Deck {idx}:**",
+            f"   **Game Mode:** {game_mode}",
+            f"   **Date:** {format_date(date)}",
+            f"   **Win Rates:** {format_win_rates(win_rates)}",
+            ""
+        ])
 
-            # Draw rounded rectangle background
-            draw.rectangle(
-                [section_x, section_y,
-                 section_x + section_width, section_y + section_height],
-                fill=(255, 255, 255),
-                outline=subtitle_color,
-                width=2
-            )
+        # Format cards
+        if cards and isinstance(cards, list):
+            # Regular cards (first 8)
+            regular_cards = cards[:8]
+            if regular_cards:
+                output_lines.append("   **Cards:**")
+                formatted_cards = format_card_list(regular_cards)
+                # Split long card lists into multiple lines
+                if len(formatted_cards) > 100:
+                    card_chunks = []
+                    current_chunk = []
+                    current_length = 0
 
-            # Game Mode header
-            mode_bg_height = 50
-            draw.rectangle(
-                [section_x, section_y,
-                 section_x + section_width, section_y + mode_bg_height],
-                fill=subtitle_color
-            )
+                    for card in regular_cards:
+                        card_str = f"{card.get('name', 'Unknown')} (Lvl {card.get('level', '?')})"
+                        if current_length + len(card_str) > 80 and current_chunk:
+                            card_chunks.append(", ".join(current_chunk))
+                            current_chunk = [card_str]
+                            current_length = len(card_str)
+                        else:
+                            current_chunk.append(card_str)
+                            current_length += len(card_str) + 2  # +2 for ", "
 
-            # Draw game mode and date
-            draw.text((section_x + section_width // 2, section_y + mode_bg_height // 2),
-                      game_mode,
-                      fill=(255, 255, 255), anchor="mm", font=subtitle_font)
+                    if current_chunk:
+                        card_chunks.append(", ".join(current_chunk))
 
-            draw.text((section_x + section_width // 2, section_y + mode_bg_height + 25),
-                      formatted_date,
-                      fill=stats_color, anchor="mm", font=stats_font)
+                    for chunk in card_chunks:
+                        output_lines.append(f"      {chunk}")
+                else:
+                    output_lines.append(f"      {formatted_cards}")
 
-            # Draw cards in a grid layout
-            for card_idx, card in enumerate(cards[:8]):  # Limit to 8 cards
-                row = card_idx // 2
-                col = card_idx % 2
+                output_lines.append("")
 
-                # Get card image URL
-                card_image_url = card_name_to_png(card['name'])
-                card_image = download_image(card_image_url)
-
-                if card_image:
-                    # Calculate card image position
-                    card_x = section_x + 50 + col * 250
-                    card_y = section_y + mode_bg_height + 60 + row * 150  # More vertical space
-
-                    # Paste card image
-                    img.paste(card_image, (card_x, card_y), card_image)
-
-                    # Draw card level underneath
-                    level_text = f"Lvl {card['level']}"
-                    draw.text((card_x + 60, card_y + 130),  # Position level text
-                              level_text,
-                              fill=text_color, anchor="ms", font=level_font)
-
-            # Draw Tower Princess separately at the bottom
-            if len(cards) >= 9:  # If there's a Tower Princess
+            # Tower card (9th card if exists)
+            if len(cards) >= 9:
                 tower_card = cards[8]
-                tower_image_url = card_name_to_png(tower_card['name'])
-                tower_image = download_image(tower_image_url)
+                if isinstance(tower_card, dict):
+                    tower_name = tower_card.get('name', 'Unknown Tower')
+                    tower_level = tower_card.get('level', '?')
+                    output_lines.extend([
+                        f"   **Tower:** {tower_name} (Lvl {tower_level})",
+                        ""
+                    ])
+        else:
+            output_lines.extend([
+                "   **Cards:** No card data available",
+                ""
+            ])
 
-                if tower_image:
-                    tower_y = section_y + section_height - 120
-                    tower_x = section_x + (section_width - tower_image.width) // 2
-                    img.paste(tower_image, (tower_x, tower_y), tower_image)
+        output_lines.append("─" * 50)
+        output_lines.append("")
 
-                    # Draw tower level
-                    draw.text((tower_x + 60, tower_y + 130),
-                              f"Lvl {tower_card['level']}",
-                              fill=text_color, anchor="ms", font=level_font)
+    # Add raw data section for debugging
+    output_lines.extend([
+        "🔍 **Raw API Response (for debugging):**",
+        f"```json\n{json.dumps(war_data, indent=2)[:1500]}{'...' if len(json.dumps(war_data)) > 1500 else ''}\n```"
+    ])
 
-            # Draw win rates
-            if win_rates:
-                win_rates_y = section_y + section_height - 60
-
-                # Draw individual win rates
-                win_rates_text = " | ".join([f"{rate * 100:.1f}%" for rate in win_rates])
-                draw.text((section_x + section_width // 2, win_rates_y),
-                          win_rates_text,
-                          fill=text_color, anchor="mm", font=stats_font)
-
-        # Convert to bytes
-        img_byte_arr = io.BytesIO()
-        img.save(img_byte_arr, format='PNG')
-        img_byte_arr.seek(0)
-        return img_byte_arr
-
-    except Exception as e:
-        logger.error(f"Error creating clan war spy image: {e}")
-        return None
+    return "\n".join(output_lines)
 
 
 async def handle_clan_war_spy_command(
         interaction: Interaction,
         opponent_player_tag: str,
-        someone_else: User = None
+        someone_else: User = None,
+        player_tag: str = None
 ):
     await interaction.response.defer()
 
     try:
+        # Validate and sanitize opponent player tag
+        if not opponent_player_tag:
+            await interaction.followup.send("❌ Please provide a valid opponent player tag.")
+            return
+
+        sanitized_opponent_tag = sanitize_tag(opponent_player_tag)
+        logger.info(f"Sanitized opponent tag: {sanitized_opponent_tag}")
+
         # Determine the user to get the DeckAI ID for
         target_user = someone_else or interaction.user
+        logger.info(f"Target user: {target_user.id}")
 
-        # Get the DeckAI ID for the target user
-        account_id = get_deckai_id(target_user.id)
+        # First, get the player tag(s) for the target user
+        player_tags = get_all_player_tags(target_user.id)
+        logger.info(f"Player tags for user {target_user.id}: {player_tags}")
+
+        if not player_tags:
+            await interaction.followup.send(
+                f"❌ No player tags found for {'the specified user' if someone_else else 'you'}. "
+                "Please link your player tag using `/link` first."
+            )
+            return
+
+        # Determine which player tag to use
+        if player_tag:
+            # If a specific player tag was provided, validate it belongs to the user
+            sanitized_tag = sanitize_tag(player_tag)
+            if sanitized_tag not in player_tags:
+                await interaction.followup.send(
+                    f"❌ The tag `{player_tag}` is not linked to {'the specified user' if someone_else else 'you'}.\n"
+                    f"**Available tags:** {', '.join([f'#{tag}' for tag in player_tags])}"
+                )
+                return
+            selected_player_tag = sanitized_tag
+        else:
+            # Use the main (first) player tag if none specified
+            selected_player_tag = player_tags[0]
+
+        logger.info(f"Selected player tag: {selected_player_tag}")
+
+        # Get the DeckAI ID for the selected player tag
+        account_id = get_deckai_id(selected_player_tag)
+        logger.info(f"DeckAI ID for tag {selected_player_tag}: {account_id}")
 
         if not account_id:
             await interaction.followup.send(
-                f"No DeckAI ID found for {'the specified user' if someone_else else 'you'}. "
-                "Please link your DeckAI ID using /link first."
+                f"❌ No DeckAI ID found for player tag `#{selected_player_tag}` "
+                f"({'the specified user' if someone_else else 'you'}).\n"
+                "Please link your DeckAI ID using the appropriate command first."
             )
             return
 
         # Fetch the clan war spy information
+        logger.info(
+            f"Calling get_clan_war_spy_info with account_id: {account_id}, opponent_tag: {sanitized_opponent_tag}")
         war_data = await get_clan_war_spy_info(
             account_id,
-            opponent_player_tag
+            sanitized_opponent_tag
         )
 
-        if not war_data:
-            await interaction.followup.send("Could not retrieve clan war spy information.")
-            return
+        logger.info(f"War data received: {type(war_data)}")
+        if war_data and isinstance(war_data, dict):
+            logger.info(f"War data keys: {war_data.keys()}")
 
-        # Create the image
-        img_byte_arr = create_clan_war_spy_image(war_data)
+        # Create the text output
+        spy_output = create_spy_text_output(war_data)
 
-        if img_byte_arr is None:
-            await interaction.followup.send("Failed to create clan war spy image.")
-            return
+        # Discord has a 2000 character limit for messages
+        if len(spy_output) > 2000:
+            # Split the message into chunks
+            chunks = []
+            current_chunk = ""
+            lines = spy_output.split('\n')
 
-        # Send the image
-        await interaction.followup.send(
-            file=discord.File(img_byte_arr, filename='clan_war_spy.png')
-        )
+            for line in lines:
+                if len(current_chunk) + len(line) + 1 > 1990:  # Leave some buffer
+                    if current_chunk:
+                        chunks.append(current_chunk)
+                        current_chunk = line
+                    else:
+                        # Single line is too long, truncate it
+                        chunks.append(line[:1990] + "...")
+                        current_chunk = ""
+                else:
+                    current_chunk += line + '\n' if current_chunk else line
+
+            if current_chunk:
+                chunks.append(current_chunk)
+
+            # Send the first chunk
+            await interaction.followup.send(chunks[0])
+
+            # Send remaining chunks
+            for chunk in chunks[1:]:
+                await interaction.followup.send(chunk)
+        else:
+            await interaction.followup.send(spy_output)
 
     except Exception as e:
         logger.error(f"Error in clan war spy command: {e}")
-        await interaction.followup.send("An error occurred while processing your request.")
+        logger.error(f"Error type: {type(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        await interaction.followup.send(
+            "❌ An error occurred while processing your request. Check the logs for details.")

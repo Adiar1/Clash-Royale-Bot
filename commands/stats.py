@@ -20,7 +20,7 @@ async def handle_stats_command(interaction: Interaction, user_or_tag: str, from_
             return
     else:
         # It's a player tag
-        player_tag = user_or_tag.strip('#').upper()
+        player_tag = sanitize_tag(user_or_tag)
 
     if from_war < to_war:
         await interaction.response.send_message(

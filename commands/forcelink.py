@@ -6,7 +6,7 @@ from utils.helpers import (
     CLASH_ROYALE_API_KEY,
     get_all_player_tags,
     link_player_tag,
-    update_player_tags, link_deckai_id, unlink_deckai_id
+    update_player_tags, link_deckai_id, unlink_deckai_id, sanitize_tag
 )
 
 
@@ -78,9 +78,7 @@ class PlayerTagView(View):
 
 
 async def handle_forcelink_command(interaction: Interaction, target_user: User, player_tag: str, alt_account: bool, deckai_id: str = None):
-    if player_tag.startswith('#'):
-        player_tag = player_tag[1:]
-    player_tag = player_tag.upper()
+    player_tag = sanitize_tag(player_tag)
 
     # Verify tag with Clash Royale API
     response = requests.get(f"{CLASH_ROYALE_API_BASE_URL}/players/%23{player_tag}", headers={

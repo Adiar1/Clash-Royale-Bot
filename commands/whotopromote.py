@@ -4,7 +4,7 @@ import discord
 from discord import Interaction, ButtonStyle, SelectOption
 from discord.ui import View, Button, Select
 from commands.stats import handle_stats_command
-from utils.helpers import get_clan_tag_by_nickname
+from utils.helpers import get_clan_tag_by_nickname, sanitize_tag
 
 
 class InfoButton(Button):
@@ -65,7 +65,7 @@ async def handle_whotopromote_command(bot, interaction: Interaction, input_value
                 await interaction.followup.send("Invalid nickname. Please check and try again.", ephemeral=True)
                 return
         else:
-            clan_tag = input_value.strip('#').upper()
+            clan_tag = sanitize_tag(input_value)
 
         # Verify the clan tag
         if not await is_real_clan_tag(clan_tag):
