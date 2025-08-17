@@ -59,7 +59,7 @@
             border-radius: 50%;
             pointer-events: auto;
             cursor: pointer;
-            animation: float 12s linear infinite;
+            animation: float linear infinite;
             transition: transform 0.3s ease;
         }
         .bubble.small {
@@ -269,6 +269,7 @@
         let baseAnimationDuration = 12; // Base duration in seconds
         let hasClickedBubble = false;
         let isWKeyDown = false;
+        let bubbleIntervalId = null;
 
         // Toggle functionality
         toggleButton.addEventListener('change', () => {
@@ -371,10 +372,31 @@
                 points = 1;
             }
 
+            // Add random horizontal position
             bubble.style.left = Math.random() * 100 + '%';
-            bubble.style.animationDuration = `${getCurrentAnimationDuration()}s`;
+
+            // Add random animation duration and delay to prevent synchronization
+            const baseDuration = getCurrentAnimationDuration();
+            const randomDuration = baseDuration + (Math.random() - 0.5) * 4; // ±2 seconds variation
+            const randomDelay = Math.random() * 3; // 0-3 seconds delay
+
+            bubble.style.animationDuration = `${Math.max(randomDuration, 2)}s`; // Minimum 2 seconds
+            bubble.style.animationDelay = `${randomDelay}s`;
+
+            // Add slight random starting position offset
+            const randomStartOffset = (Math.random() - 0.5) * 40; // ±20vh offset
+            bubble.style.transform = `translateY(${120 + randomStartOffset}vh)`;
+
+            let bubbleClicked = false;
 
             bubble.addEventListener('click', (e) => {
+                // Prevent multiple clicks on the same bubble
+                if (bubbleClicked) return;
+                bubbleClicked = true;
+
+                // Immediately disable pointer events to prevent additional clicks
+                bubble.style.pointerEvents = 'none';
+
                 if (!hasClickedBubble) {
                     hasClickedBubble = true;
                     scoreDisplay.style.display = 'block';
@@ -412,13 +434,45 @@
             });
         }
 
-        // Create new bubbles periodically
-        setInterval(createBubble, 2000);
-
-        // Initial bubbles
-        for(let i = 0; i < 6; i++) {
-            createBubble();
+        function scheduleNextBubble() {
+            // Random interval between 1.5-3.5 seconds to prevent synchronization
+            const randomInterval = 1500 + Math.random() * 2000;
+            setTimeout(() => {
+                createBubble();
+                scheduleNextBubble(); // Schedule the next one
+            }, randomInterval);
         }
+
+        // Clear any existing intervals and restart bubble creation
+        function restartBubbleGeneration() {
+            if (bubbleIntervalId) {
+                clearInterval(bubbleIntervalId);
+            }
+
+            // Clear existing bubbles
+            bubbleContainer.innerHTML = '';
+
+            // Create initial bubbles with random delays
+            for(let i = 0; i < 6; i++) {
+                setTimeout(() => {
+                    createBubble();
+                }, Math.random() * 5000); // Spread initial bubbles over 5 seconds
+            }
+
+            // Start the random scheduling system
+            scheduleNextBubble();
+        }
+
+        // Handle page visibility changes to prevent synchronization on tab return
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                // Tab became visible again, restart bubble generation to prevent sync issues
+                setTimeout(restartBubbleGeneration, 100);
+            }
+        });
+
+        // Start the bubble system
+        restartBubbleGeneration();
     </script>
 </body>
 </html>
