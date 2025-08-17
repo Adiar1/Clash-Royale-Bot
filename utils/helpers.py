@@ -150,7 +150,14 @@ def get_privileged_roles(guild_id):
         result = c.fetchone()
         conn.close()
         if result:
-            return result[0].split(',')
+            # Convert to string first, then split
+            role_ids_str = str(result[0])
+            # Handle case where it's just a single role ID
+            if ',' in role_ids_str:
+                return role_ids_str.split(',')
+            else:
+                # Return as a list with single element
+                return [role_ids_str] if role_ids_str else []
         return []
     except sqlite3.Error as e:
         logger.error(f"Database error: {e}")
@@ -254,13 +261,29 @@ def link_clan_tag(clan_tag, guild_id, nickname):
     try:
         conn = sqlite3.connect(DATABASE_NAME)
         c = conn.cursor()
-        c.execute('INSERT OR REPLACE INTO clan_links (clan_tag, guild_id, nickname) VALUES (?, ?, ?)', (clan_tag, guild_id, nickname))
+        c.execute('INSERT OR REPLACE INTO clan_links (clan_tag, guild_id, nickname) VALUES (?, ?, ?)',
+                  (clan_tag, guild_id, nickname))
         conn.commit()
         conn.close()
         return "linked"
     except sqlite3.Error as e:
         logger.error(f"Database error: {e}")
         return None
+
+
+def delete_clan_nickname(clan_tag, guild_id):
+    """Delete a clan nickname from the database"""
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        c = conn.cursor()
+        c.execute('DELETE FROM clan_links WHERE clan_tag = ? AND guild_id = ?', (clan_tag, guild_id))
+        rows_affected = c.rowcount
+        conn.commit()
+        conn.close()
+        return rows_affected > 0  # Return True if a row was deleted, False if no matching record found
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
+        return False
 
 
 def delete_all_player_tags(discord_id):
@@ -327,7 +350,7 @@ def link_player_tag(discord_id, player_tag, alt=False, deckai_id=None):
         conn.commit()
         conn.close()
 
-        # Handle DeckAI ID separately
+        # Handle DeckAI ID separately in the deckai_links table
         if deckai_id:
             link_deckai_id(player_tag, deckai_id)
 
@@ -336,7 +359,7 @@ def link_player_tag(discord_id, player_tag, alt=False, deckai_id=None):
         logger.error(f"Database error: {e}")
         return None
 
-    
+
 def get_linked_discord_id(player_tag):
     try:
         # Strip '#' and capitalize the tag
@@ -363,13 +386,13 @@ def get_player_tag_from_mention(user_mention, guild_id):
     try:
         # Extract user ID from mention
         user_id = user_mention.strip('<@!>')
-        
+
         conn = sqlite3.connect(DATABASE_NAME)
         c = conn.cursor()
         c.execute('SELECT player_tags FROM user_links WHERE discord_id = ?', (user_id,))
         result = c.fetchone()
         conn.close()
-        
+
         if result and result[0]:
             # Return the first (main) player tag
             return result[0].split(',')[0]
@@ -379,12 +402,12 @@ def get_player_tag_from_mention(user_mention, guild_id):
         return None
 
 
-
 async def is_privileged(interaction):
     guild_id = str(interaction.guild.id)
     user_roles = [role.id for role in interaction.user.roles]
     privileged_roles = get_privileged_roles(guild_id)
     return any(str(role_id) in privileged_roles for role_id in user_roles)
+
 
 def get_member_roles(guild_id):
     try:
@@ -405,11 +428,16 @@ def get_member_roles(guild_id):
         return None
 
 
+# DeckAI related functions - these work with the deckai_links table
 def get_deckai_id(player_tag):
+    """Get DeckAI ID for a specific player tag"""
     try:
+        # Sanitize the player tag to ensure consistency
+        formatted_tag = sanitize_tag(player_tag)
+
         conn = sqlite3.connect(DATABASE_NAME)
         c = conn.cursor()
-        c.execute('SELECT deckai_id FROM deckai_links WHERE player_tag = ?', (player_tag,))
+        c.execute('SELECT deckai_id FROM deckai_links WHERE player_tag = ?', (formatted_tag,))
         result = c.fetchone()
         conn.close()
         return result[0] if result else None
@@ -418,12 +446,59 @@ def get_deckai_id(player_tag):
         return None
 
 
-def update_deckai_id(player_tag, deckai_id):
+def get_deckai_id_by_discord_id(discord_id):
+    """
+    Get DeckAI ID for a Discord user by checking all their linked player tags.
+    Returns the first DeckAI ID found, or None if none are found.
+    """
     try:
+        player_tags = get_all_player_tags(discord_id)
+        if not player_tags:
+            return None
+
+        for tag in player_tags:
+            deckai_id = get_deckai_id(tag)
+            if deckai_id:
+                return deckai_id
+
+        return None
+    except Exception as e:
+        logger.error(f"Error getting DeckAI ID by Discord ID: {e}")
+        return None
+
+
+def get_player_tags_with_deckai_ids(discord_id):
+    """
+    Get all player tags for a Discord user that have associated DeckAI IDs.
+    Returns a list of tuples: [(player_tag, deckai_id), ...]
+    """
+    try:
+        player_tags = get_all_player_tags(discord_id)
+        if not player_tags:
+            return []
+
+        tags_with_deckai = []
+        for tag in player_tags:
+            deckai_id = get_deckai_id(tag)
+            if deckai_id:
+                tags_with_deckai.append((tag, deckai_id))
+
+        return tags_with_deckai
+    except Exception as e:
+        logger.error(f"Error getting player tags with DeckAI IDs: {e}")
+        return []
+
+
+def update_deckai_id(player_tag, deckai_id):
+    """Update/insert DeckAI ID for a player tag"""
+    try:
+        # Sanitize the player tag to ensure consistency
+        formatted_tag = sanitize_tag(player_tag)
+
         conn = sqlite3.connect(DATABASE_NAME)
         c = conn.cursor()
         c.execute('INSERT OR REPLACE INTO deckai_links (player_tag, deckai_id) VALUES (?, ?)',
-                  (player_tag, deckai_id))
+                  (formatted_tag, deckai_id))
         conn.commit()
         conn.close()
         return True
@@ -431,11 +506,16 @@ def update_deckai_id(player_tag, deckai_id):
         logger.error(f"Database error: {e}")
         return False
 
+
 def delete_deckai_id(player_tag):
+    """Delete DeckAI ID for a player tag"""
     try:
+        # Sanitize the player tag to ensure consistency
+        formatted_tag = sanitize_tag(player_tag)
+
         conn = sqlite3.connect(DATABASE_NAME)
         c = conn.cursor()
-        c.execute('DELETE FROM deckai_links WHERE player_tag = ?', (player_tag,))
+        c.execute('DELETE FROM deckai_links WHERE player_tag = ?', (formatted_tag,))
         conn.commit()
         conn.close()
         return True
@@ -445,23 +525,32 @@ def delete_deckai_id(player_tag):
 
 
 def link_deckai_id(player_tag: str, deckai_id: str):
+    """Link a DeckAI ID to a player tag"""
     try:
+        # Sanitize the player tag to ensure consistency
+        formatted_tag = sanitize_tag(player_tag)
+
         conn = sqlite3.connect(DATABASE_NAME)
         c = conn.cursor()
         c.execute('INSERT OR REPLACE INTO deckai_links (player_tag, deckai_id) VALUES (?, ?)',
-                  (player_tag, deckai_id))
+                  (formatted_tag, deckai_id))
         conn.commit()
         conn.close()
         return True
     except sqlite3.Error as e:
         logger.error(f"Database error: {e}")
         return False
+
 
 def unlink_deckai_id(player_tag: str):
+    """Unlink a DeckAI ID from a player tag"""
     try:
+        # Sanitize the player tag to ensure consistency
+        formatted_tag = sanitize_tag(player_tag)
+
         conn = sqlite3.connect(DATABASE_NAME)
         c = conn.cursor()
-        c.execute('DELETE FROM deckai_links WHERE player_tag = ?', (player_tag,))
+        c.execute('DELETE FROM deckai_links WHERE player_tag = ?', (formatted_tag,))
         conn.commit()
         conn.close()
         return True
@@ -469,7 +558,9 @@ def unlink_deckai_id(player_tag: str):
         logger.error(f"Database error: {e}")
         return False
 
+
 def card_name_to_png(card_name: str) -> str:
+    """Convert card name to PNG URL"""
     # Remove "Evolved" and strip any extra whitespace
     updated_name = card_name.replace("Evolved", "").strip()
     # Replace spaces with '-'

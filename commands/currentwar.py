@@ -9,7 +9,8 @@ import io
 from commands.lastwar import excel_like_sort_key
 from utils.api import get_current_clan_members, get_former_clan_members, is_new_player, get_current_fame, \
     get_members_current_decks_used, is_real_clan_tag
-from utils.helpers import FAME_EMOJI, NEW_MEMBER_EMOJI, MULTIDECK_EMOJI, FORMER_MEMBER_EMOJI, get_clan_tag_by_nickname
+from utils.helpers import FAME_EMOJI, NEW_MEMBER_EMOJI, MULTIDECK_EMOJI, FORMER_MEMBER_EMOJI, get_clan_tag_by_nickname, \
+    sanitize_tag
 
 
 class SelectDataOrder(Select):
@@ -105,7 +106,8 @@ async def handle_currentwar_command(bot, interaction: Interaction, user_message:
                                     arrange_listing_order: str = "tag_asc",
                                     arrange_data_order: str = "fame_name_decks") -> None:
     parts = user_message.split()
-    input_value = parts[1].lstrip('#')
+    input_value = sanitize_tag(parts[1])
+
 
     if len(input_value) < 5:
         clan_tag = get_clan_tag_by_nickname(input_value, interaction.guild.id)

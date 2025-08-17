@@ -9,7 +9,8 @@ import io
 from commands.lastwar import excel_like_sort_key
 from utils.api import get_current_clan_members, get_former_clan_members, is_new_player, get_fame_n_wars_ago, \
     get_decks_used_n_wars_ago, is_real_clan_tag
-from utils.helpers import FAME_EMOJI, NEW_MEMBER_EMOJI, MULTIDECK_EMOJI, FORMER_MEMBER_EMOJI, get_clan_tag_by_nickname
+from utils.helpers import FAME_EMOJI, NEW_MEMBER_EMOJI, MULTIDECK_EMOJI, FORMER_MEMBER_EMOJI, get_clan_tag_by_nickname, \
+    sanitize_tag
 
 
 class SelectN(Select):
@@ -128,7 +129,7 @@ async def handle_nthwar_command(bot, interaction: Interaction, user_message: str
                                 arrange_listing_order: str = "tag_asc",
                                 arrange_data_order: str = "fame_name_decks") -> None:
     parts = user_message.split()
-    input_value = parts[1].lstrip('#')
+    input_value = sanitize_tag(parts[1])
     n = int(parts[2])
 
     if not 1 <= n <= 10:

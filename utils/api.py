@@ -547,21 +547,67 @@ async def get_tournament_info(tournament_tag: str) -> Tuple[str, List[Tuple[str,
 
     return "Unknown Tournament", []
 
+
 async def get_clan_war_spy_info(account_id: str, opponent_player_tag: str) -> dict:
+    # Validate inputs
+    if not account_id:
+        print("Error: account_id is None or empty")
+        return {}
+
+    if not opponent_player_tag:
+        print("Error: opponent_player_tag is None or empty")
+        return {}
+
+    # Check if API key is available
+    if not DECK_AI_API_KEY:
+        print("Error: DECK_AI_API_KEY is not set in environment variables")
+        return {}
+
+    # Try with the original tag format (with #) first
+    formatted_opponent_tag = opponent_player_tag if opponent_player_tag.startswith('#') else f"#{opponent_player_tag}"
+
     url = f"{DECK_AI_API_BASE_URL}/clan-war-spy"
     params = {
-        "accountId": account_id,
-        "opponentPlayerTag": opponent_player_tag
+        "accountId": str(account_id),
+        "opponentPlayerTag": formatted_opponent_tag
     }
     headers = {
         "api-key": DECK_AI_API_KEY
     }
 
+    # Debug logging
+    print(f"API URL: {url}")
+    print(f"API Params: {params}")
+    print(f"API Key present: {DECK_AI_API_KEY is not None}")
+
     async with aiohttp.ClientSession() as session:
         async with session.get(url, params=params, headers=headers) as response:
+            print(f"Response status: {response.status}")
             if response.status == 200:
-                return await response.json()
+                data = await response.json()
+                print(f"Response data type: {type(data)}")
+                return data
+            elif response.status == 404:
+                # Try without the # symbol if the first attempt failed
+                sanitized_opponent_tag = sanitize_tag(opponent_player_tag)
+                params_alt = {
+                    "accountId": str(account_id),
+                    "opponentPlayerTag": sanitized_opponent_tag
+                }
+                print(f"Trying again with sanitized tag: {sanitized_opponent_tag}")
+
+                async with session.get(url, params=params_alt, headers=headers) as response2:
+                    print(f"Second attempt response status: {response2.status}")
+                    if response2.status == 200:
+                        data = await response2.json()
+                        print(f"Response data type: {type(data)}")
+                        return data
+                    else:
+                        error_text = await response2.text()
+                        print(f"Second attempt error: {response2.status} - {error_text}")
+                        return {}
             else:
-                # Handle error cases
-                print(f"Error: {response.status}")
+                # Handle other error cases
+                error_text = await response.text()
+                print(f"Error: {response.status} - {error_text}")
                 return {}

@@ -13,7 +13,7 @@ from utils.helpers import EMOJI_TROPHYROAD, get_all_player_tags
 from typing import Optional, Tuple, Any
 
 
-async def handle_viewlinks_command(interaction: Interaction, someone_else: Optional[User] = None) -> None:
+async def handle_profile_command(interaction: Interaction, someone_else: Optional[User] = None) -> None:
     await interaction.response.defer()
 
     user = someone_else if someone_else else interaction.user

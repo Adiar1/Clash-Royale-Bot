@@ -5,7 +5,7 @@ import csv
 import io
 import asyncio
 from utils.api import get_current_clan_members, get_role, is_new_player, get_former_clan_members, is_real_clan_tag
-from utils.helpers import NEW_MEMBER_EMOJI, get_clan_tag_by_nickname
+from utils.helpers import NEW_MEMBER_EMOJI, get_clan_tag_by_nickname, sanitize_tag
 
 
 class SelectListingOrder(Select):
@@ -93,7 +93,7 @@ class ToggleMemberViewButton(Button):
 
 async def handle_members_command(client, interaction: Interaction, user_message: str, sort_by: str = "name_asc", order_by: str = "name_tag_role") -> None:
     parts = user_message.split()
-    input_value = parts[1].lstrip('#')
+    input_value = sanitize_tag(parts[1])
 
     if len(input_value) < 5:
         clan_tag = get_clan_tag_by_nickname(input_value, interaction.guild.id)
