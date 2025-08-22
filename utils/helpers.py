@@ -41,16 +41,13 @@ def sanitize_tag(tag: str) -> str:
 
 # Add these to the existing constants
 LEAGUE_IMAGES = {
-    1: "https://i.imgur.com/MLKoAmu.png",
-    2: "https://i.imgur.com/BOXTOdG.png",
-    3: "https://i.imgur.com/V1qZXfO.png",
-    4: "https://i.imgur.com/Wvd22mf.png",
-    5: "https://i.imgur.com/VGtORcN.png",
-    6: "https://i.imgur.com/yZV6S0n.png",
-    7: "https://i.imgur.com/kNBJ5NF.png",
-    8: "https://i.imgur.com/8h0pV54.png",
-    9: "https://i.imgur.com/kRRJNtK.png",
-    10: "https://i.imgur.com/ALZC2Zk.png"
+    1: "https://i.imgur.com/Wvd22mf.png",
+    2: "https://i.imgur.com/VGtORcN.png",
+    3: "https://i.imgur.com/yZV6S0n.png",
+    4: "https://i.imgur.com/kNBJ5NF.png",
+    5: "https://i.imgur.com/8h0pV54.png",
+    6: "https://i.imgur.com/kRRJNtK.png",
+    7: "https://i.imgur.com/ALZC2Zk.png"
 }
 
 LEVEL_EMOJIS = {
