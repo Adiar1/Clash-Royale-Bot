@@ -50,7 +50,7 @@ def logout():
 @app.route("/")
 @login_required
 def index():
-    return render_template("index1.html", bot_running=(BOT_PROCESS is not None))
+    return render_template("index.html", bot_running=(BOT_PROCESS is not None))
 
 @app.route("/start", methods=["POST"])
 @login_required
