@@ -1,28 +1,40 @@
-from flask import Flask, render_template, request, redirect, url_for, send_file, abort, session
+from flask import Flask, render_template, request, redirect, url_for, send_file, session
 import os
+import sys
 import subprocess
 import sqlite3
 from dotenv import load_dotenv
 from functools import wraps
+from pathlib import Path
 
+# ---- Resolve repo root regardless of where the app is launched ----
+def find_repo_root(start: Path) -> Path:
+    p = start.resolve()
+    for parent in [p] + list(p.parents):
+        if (parent / ".git").exists():
+            return parent
+    # Fallback: use the folder containing this file
+    return p
 
-load_dotenv()
+HERE = Path(__file__).resolve().parent         # folder with this file
+BOT_DIR = find_repo_root(HERE)                  # repo root: /opt/Clash-Royale-Bot
+BOT_SCRIPT = BOT_DIR / "main.py"
+ENV_FILE = BOT_DIR / ".env"
+DB_FILE = BOT_DIR / "database.db"
+TEMPLATES_DIR = BOT_DIR / "linode" / "templates"
+STATIC_DIR = BOT_DIR / "linode" / "static"      # optional; use if you have one
 
-app = Flask(__name__)
-app.secret_key = os.urandom(24)
+load_dotenv(ENV_FILE if ENV_FILE.exists() else None)
 
-# Paths
-BOT_SCRIPT = os.path.join(os.getcwd(), "main.py")
-BOT_DIR = os.getcwd()
-ENV_FILE = os.path.join(BOT_DIR, ".env")
-DB_FILE = os.path.join(BOT_DIR, "database.db")
-TEMPLATES_DIR = os.path.join(BOT_DIR, "linode", "templates")
+# Stable secret key (don’t regenerate on every restart or you’ll get logged out)
+SECRET_KEY = os.getenv("FLASK_SECRET_KEY") or os.getenv("SECRET_KEY") or "change-me"
 
-app.template_folder = TEMPLATES_DIR
+app = Flask(__name__, template_folder=str(TEMPLATES_DIR), static_folder=str(STATIC_DIR) if STATIC_DIR.exists() else None)
+app.secret_key = SECRET_KEY
 
 BOT_PROCESS = None
 
-# Password protection
+# ---------- Auth ----------
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -34,12 +46,11 @@ def login_required(f):
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        password = request.form['password']
+        password = request.form.get('password', '')
         if password == os.getenv('ADMIN_PASSWORD'):
             session['logged_in'] = True
             return redirect(request.args.get('next') or url_for('index'))
-        else:
-            return 'Invalid password'
+        return 'Invalid password'
     return render_template('login.html')
 
 @app.route('/logout')
@@ -47,104 +58,104 @@ def logout():
     session.pop('logged_in', None)
     return redirect(url_for('login'))
 
-@app.route("/")
+# ---------- UI ----------
+@app.route('/')
 @login_required
 def index():
-    return render_template("index.html", bot_running=(BOT_PROCESS is not None))
+    return render_template('index.html', bot_running=(BOT_PROCESS is not None))
 
-@app.route("/start", methods=["POST"])
+# ---------- Bot control ----------
+@app.route('/start', methods=['POST'])
 @login_required
 def start_bot():
     global BOT_PROCESS
     if BOT_PROCESS is None:
-        BOT_PROCESS = subprocess.Popen(["python3", BOT_SCRIPT])
-        return redirect(url_for("index"))
+        python = sys.executable or "python3"
+        BOT_PROCESS = subprocess.Popen([python, str(BOT_SCRIPT)], cwd=str(BOT_DIR))
+        return redirect(url_for('index'))
     return "Bot is already running. <a href='/'>Go back</a>"
 
-@app.route("/stop", methods=["POST"])
+@app.route('/stop', methods=['POST'])
 @login_required
 def stop_bot():
     global BOT_PROCESS
     if BOT_PROCESS is not None:
-        # Send SIGTERM to terminate the process
         BOT_PROCESS.terminate()
         try:
-            # Wait for the process to terminate
             BOT_PROCESS.wait(timeout=10)
         except subprocess.TimeoutExpired:
-            # Force kill the process if it doesn't terminate in time
             BOT_PROCESS.kill()
-            BOT_PROCESS.wait()  # Ensure it's fully stopped
+            BOT_PROCESS.wait()
+        BOT_PROCESS = None
+    return redirect(url_for('index'))
 
-        BOT_PROCESS = None  # Reset the global reference
-    return redirect(url_for("index"))
-
-@app.route("/update", methods=["POST"])
+@app.route('/update', methods=['POST'])
 @login_required
 def update_files():
     try:
-        subprocess.run(["git", "-C", BOT_DIR, "pull"], check=True)
+        subprocess.run(["git", "-C", str(BOT_DIR), "pull"], check=True)
         return "Bot updated successfully! <a href='/'>Go back</a>"
-    except subprocess.CalledProcessError:
-        return "Failed to update the bot. <a href='/'>Go back</a>"
+    except subprocess.CalledProcessError as e:
+        return f"Failed to update the bot: {e}. <a href='/'>Go back</a>"
 
-@app.route("/files")
+# ---------- File viewer (safe within repo only) ----------
+@app.route('/files')
 @login_required
 def file_viewer():
-    def list_files(directory):
+    def list_items(directory: Path):
         items = []
-        for item in os.listdir(directory):
-            path = os.path.join(directory, item)
+        for item in sorted(directory.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower())):
             items.append({
-                "name": item,
-                "path": path.replace(BOT_DIR, ""),  # Path relative to BOT_DIR
-                "is_dir": os.path.isdir(path)
+                "name": item.name,
+                "path": str(item.relative_to(BOT_DIR)),   # relative path
+                "is_dir": item.is_dir()
             })
         return items
 
-    directory_path = request.args.get("dir", "")
-    full_path = os.path.join(BOT_DIR, directory_path.lstrip("/"))
-    if os.path.isdir(full_path):
-        files = list_files(full_path)
-        return render_template("files.html", files=files, current_dir=directory_path)
-    elif os.path.isfile(full_path):
+    rel = request.args.get("dir", "")
+    # Normalize & prevent path traversal
+    full_path = (BOT_DIR / rel).resolve()
+    if not str(full_path).startswith(str(BOT_DIR.resolve())):
+        return "Invalid path. <a href='/files'>Go back</a>"
+
+    if full_path.is_dir():
+        files = list_items(full_path)
+        return render_template("files.html", files=files, current_dir=str(Path(rel)))
+    if full_path.is_file():
         return send_file(full_path)
     return "Invalid path. <a href='/files'>Go back</a>"
 
-@app.route("/edit_env", methods=["GET", "POST"])
+# ---------- .env editor ----------
+@app.route('/edit_env', methods=['GET', 'POST'])
 @login_required
 def edit_env():
-    if request.method == "POST":
-        new_content = request.form["env_content"]
-        with open(ENV_FILE, "w") as f:
-            f.write(new_content)
-        return redirect(url_for("edit_env"))
-    with open(ENV_FILE, "r") as f:
-        env_content = f.read()
-    return render_template("edit_env.html", env_content=env_content)
+    if request.method == 'POST':
+        new_content = request.form.get('env_content', '')
+        ENV_FILE.write_text(new_content, encoding='utf-8')
+        return redirect(url_for('edit_env'))
+    env_content = ENV_FILE.read_text(encoding='utf-8') if ENV_FILE.exists() else ""
+    return render_template('edit_env.html', env_content=env_content)
 
-@app.route("/database")
+# ---------- DB viewer ----------
+@app.route('/database')
 @login_required
 def view_database():
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = sqlite3.connect(str(DB_FILE))
         cursor = conn.cursor()
-
-        # Get table names
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        tables = cursor.fetchall()
+        tables = [row[0] for row in cursor.fetchall()]
 
         database_data = []
-        for table_name, in tables:
+        for table_name in tables:
             cursor.execute(f"SELECT * FROM {table_name};")
             rows = cursor.fetchall()
-            column_names = [description[0] for description in cursor.description]
+            column_names = [desc[0] for desc in cursor.description]
             database_data.append({"table_name": table_name, "columns": column_names, "rows": rows})
-
         conn.close()
-        return render_template("database.html", database_data=database_data)
+        return render_template('database.html', database_data=database_data)
     except Exception as e:
         return f"Error reading database: {e}"
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.getenv("PORT", "5000")))
