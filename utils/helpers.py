@@ -24,7 +24,7 @@ LEVEL_14_EMOJI = "<:experience14:1259916537939099760>"
 LEVEL_13_EMOJI = "<:experience13:1259916353947566172>"
 EVOLUTION_EMOJI = "<:evolution:1259918441775894639>"
 EMOJI_TROPHYROAD = "<:trophyroad:1259911930802343959>"
-POLMEDAL_EMOJI = "<:polmedal:1259901992386428978>"
+rankedMEDAL_EMOJI = "<:polmedal:1259901992386428978>"
 CW2_EMOJI = "<:cw2:1259911002594742332>"
 CC_EMOJI = "<:classicwin:1259902085990715482>"
 GC_EMOJI = "<:grandwin:1259902048279859210>"
@@ -36,7 +36,7 @@ DEFAULT_DATA_ORDER = "tag_name_role"
 
 
 def sanitize_tag(tag: str) -> str:
-    return tag.strip().upper().replace('O', '0')
+    return tag.strip().lstrip('#').upper().replace('O', '0')
 
 
 # Add these to the existing constants
