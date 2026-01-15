@@ -8,14 +8,14 @@ async def handle_viewlinks_command(interaction: Interaction, input_value: str):
     await interaction.response.defer()
 
     # Determine if input is a tag or nickname
-    input_value = sanitize_tag(input_value)
+    input_value = input_value
     if len(input_value) < 5:
         clan_tag = get_clan_tag_by_nickname(input_value, interaction.guild.id)
         if clan_tag is None:
             await interaction.followup.send("Oopsy daisies. Check that tag/nickname real quick", ephemeral=True)
             return
     else:
-        clan_tag = input_value
+        clan_tag = sanitize_tag(input_value)
 
     if not await is_real_clan_tag(clan_tag):
         await interaction.followup.send("Oopsy daisies. Check that tag/nickname real quick", ephemeral=True)

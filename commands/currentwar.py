@@ -106,7 +106,7 @@ async def handle_currentwar_command(bot, interaction: Interaction, user_message:
                                     arrange_listing_order: str = "tag_asc",
                                     arrange_data_order: str = "fame_name_decks") -> None:
     parts = user_message.split()
-    input_value = sanitize_tag(parts[1])
+    input_value = parts[1]
 
 
     if len(input_value) < 5:

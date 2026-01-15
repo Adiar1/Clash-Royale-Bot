@@ -10,7 +10,7 @@ async def handle_reminders_command(interaction: Interaction, channel: TextChanne
 
     try:
         # Normalize the input to uppercase to handle case insensitivity
-        input_value = sanitize_tag(input_value)
+        input_value = input_value
 
         # Determine if input is a clan tag or a nickname
         if len(input_value) < 5:
@@ -20,7 +20,7 @@ async def handle_reminders_command(interaction: Interaction, channel: TextChanne
                 await interaction.followup.send("Oopsy daisies. Check that tag/nickname real quick.", ephemeral=True)
                 return
         else:
-            clan_tag = input_value
+            clan_tag = sanitize_tag(input_value)
 
         # Fetch decks used today
         decks_used_today = await get_decks_used_today(clan_tag)
