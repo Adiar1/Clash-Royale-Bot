@@ -107,7 +107,7 @@ async def handle_lastwar_command(bot, interaction: Interaction, user_message: st
                                arrange_listing_order: str = "tag_asc",
                                arrange_data_order: str = "fame_name_decks") -> None:
     parts = user_message.split()
-    input_value = parts[1].lstrip('#')
+    input_value = parts[1]
 
     if len(input_value) < 5:
         clan_tag = get_clan_tag_by_nickname(input_value, interaction.guild.id)

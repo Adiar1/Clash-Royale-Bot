@@ -4,7 +4,7 @@ from discord.ui import View, Select, Button
 from utils.api import get_weeks_ago_joined, get_average_fame_for_members, is_real_clan_tag
 import io
 import csv
-from utils.helpers import FAME_EMOJI, get_clan_tag_by_nickname, sanitize_tag
+from utils.helpers import FAME_EMOJI, get_clan_tag_by_nickname, sanitize_tag, get_discord_id_from_tag
 
 
 class SelectDataOrder(Select):
@@ -90,11 +90,11 @@ class DownloadCSVButton(Button):
 
     def get_member_value(self, member, key):
         if key == "name":
-            return member[0]
+            return member[0]  # name
         elif key == "weeks":
-            return member[1]
+            return member[1]  # weeks
         elif key == "fame":
-            return member[2]
+            return member[2]  # fame
         else:
             return ""
 
@@ -104,15 +104,15 @@ async def handle_clan_command(bot, interaction: Interaction, user_message: str,
                               arrange_data_order: str = "name_weeks_fame",
                               edit_mode: bool = False) -> None:
     parts = user_message.split()
-    input_value = sanitize_tag(parts[1])
+    input_value = parts[1].strip()
 
     if len(input_value) < 5:
-        clan_tag = get_clan_tag_by_nickname(input_value, interaction.guild.id)
+        clan_tag = get_clan_tag_by_nickname(input_value.lower(), str(interaction.guild.id))
         if clan_tag is None:
             await interaction.response.send_message("Oopsy daisies. Check that tag/nickname real quick", ephemeral=True)
             return
     else:
-        clan_tag = input_value
+        clan_tag = sanitize_tag(input_value)
 
     if not await is_real_clan_tag(clan_tag):
         await interaction.response.send_message("Oopsy daisies. Check that tag/nickname real quick", ephemeral=True)
@@ -129,11 +129,12 @@ async def handle_clan_command(bot, interaction: Interaction, user_message: str,
         # Create a dictionary to store averages by member name
         averages_dict = {name: avg for name, avg in member_averages}
 
-        # Combine data into a list of tuples
-        members_with_info = [
-            (name, weeks, averages_dict.get(name, 0))
-            for _, name, weeks in member_weeks
-        ]
+        # Combine data into a list of tuples (now including discord_id)
+        members_with_info = []
+        for tag, name, weeks in member_weeks:
+            discord_id = get_discord_id_from_tag(tag)  # Get the Discord ID if linked
+            avg_fame = averages_dict.get(name, 0)
+            members_with_info.append((name, weeks, avg_fame, discord_id))
 
         # Sorting logic based on arrange_listing_order
         if arrange_listing_order == "name_asc":
@@ -150,11 +151,15 @@ async def handle_clan_command(bot, interaction: Interaction, user_message: str,
             members_with_info.sort(key=lambda x: x[2], reverse=True)
 
         # Data ordering logic
-        def format_member_line(name, weeks, fame, order):
+        def format_member_line(name, weeks, fame, order, discord_id=None):
             formatted_line = []
             for key in order:
                 if key == "name":
-                    formatted_line.append(f"`{name}`")
+                    # If we have a discord_id, show it as a silent mention
+                    if discord_id:
+                        formatted_line.append(f"`{name}` <@{discord_id}>")
+                    else:
+                        formatted_line.append(f"`{name}`")
                 elif key == "weeks":
                     formatted_line.append(str(weeks))
                 elif key == "fame":
@@ -185,8 +190,8 @@ async def handle_clan_command(bot, interaction: Interaction, user_message: str,
         header_line = " - ".join(headers[key] for key in order)
 
         member_lines = [
-            format_member_line(name, weeks, fame, order)
-            for name, weeks, fame in members_with_info
+            format_member_line(name, weeks, fame, order, discord_id)
+            for name, weeks, fame, discord_id in members_with_info
         ]
 
         # Create embed message

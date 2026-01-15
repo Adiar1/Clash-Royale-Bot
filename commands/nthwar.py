@@ -129,7 +129,7 @@ async def handle_nthwar_command(bot, interaction: Interaction, user_message: str
                                 arrange_listing_order: str = "tag_asc",
                                 arrange_data_order: str = "fame_name_decks") -> None:
     parts = user_message.split()
-    input_value = sanitize_tag(parts[1])
+    input_value = parts[1]
     n = int(parts[2])
 
     if not 1 <= n <= 10:
@@ -142,7 +142,7 @@ async def handle_nthwar_command(bot, interaction: Interaction, user_message: str
             await interaction.response.send_message("Oopsy daisies. Check that tag/nickname real quick", ephemeral=True)
             return
     else:
-        clan_tag = input_value
+        clan_tag = sanitize_tag(input_value)
 
     if not await is_real_clan_tag(clan_tag):
         await interaction.response.send_message("Oopsy daisies. Check that tag/nickname real quick", ephemeral=True)

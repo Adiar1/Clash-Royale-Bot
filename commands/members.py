@@ -93,7 +93,7 @@ class ToggleMemberViewButton(Button):
 
 async def handle_members_command(client, interaction: Interaction, user_message: str, sort_by: str = "name_asc", order_by: str = "name_tag_role") -> None:
     parts = user_message.split()
-    input_value = sanitize_tag(parts[1])
+    input_value = parts[1]
 
     if len(input_value) < 5:
         clan_tag = get_clan_tag_by_nickname(input_value, interaction.guild.id)
@@ -101,7 +101,7 @@ async def handle_members_command(client, interaction: Interaction, user_message:
             await interaction.response.send_message("Oopsy daisies. Check that tag/nickname real quick", ephemeral=True)
             return
     else:
-        clan_tag = input_value
+        clan_tag = sanitize_tag(input_value)
 
     if not await is_real_clan_tag(clan_tag):
         await interaction.response.send_message("Oopsy daisies. Check that tag/nickname real quick", ephemeral=True)

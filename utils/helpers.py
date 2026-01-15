@@ -38,6 +38,12 @@ DEFAULT_DATA_ORDER = "tag_name_role"
 def sanitize_tag(tag: str) -> str:
     return tag.strip().lstrip('#').upper().replace('O', '0')
 
+def sanitize_tag_hashed(tag: str) -> str:
+    # Remove # if present, uppercase, replace O with 0
+    cleaned = tag.strip().lstrip('#').upper().replace('O', '0')
+    # Add # back
+    return f"#{cleaned}"
+
 
 # Add these to the existing constants
 LEAGUE_IMAGES = {
@@ -115,8 +121,20 @@ def get_clan_tag_by_nickname(nickname, guild_id):
     try:
         conn = sqlite3.connect(DATABASE_NAME)
         c = conn.cursor()
+
+        # Debug: Print what we're searching for
+        print(f"DEBUG: Searching for nickname='{nickname}', guild_id='{guild_id}' (type: {type(guild_id)})")
+
+        # Debug: Print all clan_links in database
+        c.execute('SELECT clan_tag, guild_id, nickname FROM clan_links')
+        all_links = c.fetchall()
+        print(f"DEBUG: All clan links in database: {all_links}")
+
         c.execute('SELECT clan_tag FROM clan_links WHERE nickname = ? AND guild_id = ?', (nickname, guild_id))
         result = c.fetchone()
+
+        print(f"DEBUG: Query result: {result}")
+
         conn.close()
         if result:
             return result[0]
@@ -124,7 +142,6 @@ def get_clan_tag_by_nickname(nickname, guild_id):
     except sqlite3.Error as e:
         logger.error(f"Database error: {e}")
         return None
-
 
 def get_all_clan_links():
     try:
