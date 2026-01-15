@@ -215,6 +215,12 @@
             transform: scale(1.05);
             box-shadow: 0 5px 15px rgba(123, 104, 238, 0.4);
         }
+        .update-button.secondary {
+            background-color: #6A5ACD;
+        }
+        .update-button.secondary:hover {
+            background-color: #5A4ABD;
+        }
         .nav-links {
             display: flex;
             justify-content: center;
@@ -249,6 +255,9 @@
             </div>
             <form action="/update" method="post">
                 <button type="submit" class="update-button">Update Bot</button>
+            </form>
+            <form action="/update_and_restart" method="post">
+                <button type="submit" class="update-button secondary">Update & Restart</button>
             </form>
         </div>
         <div class="nav-links">
