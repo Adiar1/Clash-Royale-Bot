@@ -157,8 +157,15 @@ async def handle_clan_command(bot, interaction: Interaction, user_message: str,
                 if key == "name":
                     # If we have a discord_id, show it as a silent mention
                     if discord_id:
-                        formatted_line.append(f"`{name}` <@{discord_id}>")
+                        # Ensure discord_id is a string and is numeric
+                        discord_id_str = str(discord_id)
+                        if discord_id_str.isdigit():
+                            formatted_line.append(f"`{name}` <@{discord_id_str}>")
+                        else:
+                            # Invalid discord_id, just show the name
+                            formatted_line.append(f"`{name}`")
                     else:
+                        # No discord_id, just show the name
                         formatted_line.append(f"`{name}`")
                 elif key == "weeks":
                     formatted_line.append(str(weeks))
