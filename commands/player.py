@@ -5,7 +5,7 @@ from discord import Interaction
 
 from utils.helpers import (
     sanitize_tag, LEVEL_EMOJIS, EMOJI_TROPHYROAD, EVOLUTION_EMOJI,
-    LEVEL_15_EMOJI, LEVEL_14_EMOJI, LEVEL_13_EMOJI, CW2_EMOJI, CC_EMOJI,
+    LEVEL_16_EMOJI, LEVEL_15_EMOJI, LEVEL_14_EMOJI, CW2_EMOJI, CC_EMOJI,
     GC_EMOJI, FAME_EMOJI, MULTIDECK_EMOJI, rankedMEDAL_EMOJI, LEAGUE_IMAGES,
     get_player_tag_from_mention
 )
@@ -15,18 +15,7 @@ from utils.api import (
     get_current_fame, get_last_fame, get_members_current_decks_used, get_last_decks_used
 )
 
-# ---------------------------------------
-# Logging configuration (production-ready)
-# ---------------------------------------
 logger = logging.getLogger(__name__)
-
-# In your app entrypoint, configure once:
-# logging.basicConfig(
-#     level=logging.WARNING,  # DEBUG/INFO in dev; WARNING/ERROR in prod
-#     format="%(asctime)s %(levelname)s [%(name)s] %(message)s"
-# )
-
-LEAGUE_THRESHOLD = 10_000  # Only fetch/show league info at or above 10k trophies
 
 
 async def handle_player_command(interaction: Interaction, user_or_tag: str):
@@ -56,25 +45,18 @@ async def handle_player_command(interaction: Interaction, user_or_tag: str):
         trophies = await get_player_trophies(player_tag, player_info)
         best_trophies = await get_player_best_trophies(player_tag, player_info)
 
-        # Common parallel fetches
+        # Fetch all data in parallel
         tasks = [
             get_player_cards(player_tag),
             get_player_badges(player_tag),
             get_player_clan_info(player_tag),
+            get_player_path_of_legends_info(player_tag),
         ]
-
-        # League info only for ≥ 10k trophies
-        above_10k = trophies >= LEAGUE_THRESHOLD
-        if above_10k:
-            tasks.append(get_player_path_of_legends_info(player_tag))
 
         results = await asyncio.gather(*tasks, return_exceptions=False)
         full_results = [player_info, trophies, best_trophies] + list(results)
 
-        if above_10k:
-            await _handle_player_data(interaction, full_results, above_10k=True)
-        else:
-            await _handle_player_data(interaction, full_results, above_10k=False)
+        await _handle_player_data(interaction, full_results)
 
     except asyncio.TimeoutError:
         logger.warning("Timeout while handling player command", exc_info=True)
@@ -84,10 +66,9 @@ async def handle_player_command(interaction: Interaction, user_or_tag: str):
         await interaction.followup.send("An unexpected error occurred while processing your request.")
 
 
-async def _handle_player_data(interaction: Interaction, results, above_10k: bool):
+async def _handle_player_data(interaction: Interaction, results):
     """Build and send the embed based on fetched data."""
-    player_info, trophies, best_trophies, cards, badges, clan_tag = results[:6]
-    ranked_info = results[6] if above_10k and len(results) > 6 else None
+    player_info, trophies, best_trophies, cards, badges, clan_tag, ranked_info = results
 
     nohash_clan_tag = (clan_tag or {}).get('tag', '').strip('#')
     player_tag = player_info.get('tag', '')
@@ -116,7 +97,6 @@ async def _handle_player_data(interaction: Interaction, results, above_10k: bool
         last_fame=last_fame or 0,
         last_decks_used=last_decks_used or 0,
         ranked_info=ranked_info,
-        above_10k=above_10k
     )
 
     await interaction.followup.send(embed=embed)
@@ -136,7 +116,6 @@ def _create_player_embed(
     last_fame: int,
     last_decks_used: int,
     ranked_info: dict | None,
-    above_10k: bool
 ) -> discord.Embed:
     """Construct the Discord embed for player data."""
     embed = discord.Embed(
@@ -166,26 +145,26 @@ def _create_player_embed(
         inline=False
     )
 
-    # Card Levels
+    # Card Levels - Updated for max level 16
     safe_cards = cards or []
     evolution_cards = [c for c in safe_cards if c.get('evolutionLevel', 0) == 1]
-    level_15_cards = [c for c in safe_cards if c.get('level') == c.get('maxLevel', 0) + 1]
-    level_14_cards = [c for c in safe_cards if c.get('level') == c.get('maxLevel', 0)]
-    level_13_cards = [c for c in safe_cards if c.get('level') == c.get('maxLevel', 0) - 1]
+    level_16_cards = [c for c in safe_cards if c.get('level') == c.get('maxLevel', 0) ]
+    level_15_cards = [c for c in safe_cards if c.get('level') == c.get('maxLevel', 0) - 1]
+    level_14_cards = [c for c in safe_cards if c.get('level') == c.get('maxLevel', 0) - 2]
 
     embed.add_field(
         name="**__Card Levels__**",
         value=(
             f"{EVOLUTION_EMOJI}: {len(evolution_cards)}\n"
+            f"{LEVEL_16_EMOJI}: {len(level_16_cards)}\n"
             f"{LEVEL_15_EMOJI}: {len(level_15_cards)}\n"
-            f"{LEVEL_14_EMOJI}: {len(level_14_cards)}\n"
-            f"{LEVEL_13_EMOJI}: {len(level_13_cards)}"
+            f"{LEVEL_14_EMOJI}: {len(level_14_cards)}"
         ),
         inline=False
     )
 
-    # Ranked (Path of Legends) – only ≥ 10k trophies
-    if above_10k and ranked_info:
+    # Ranked (Path of Legends) - Always show if available
+    if ranked_info:
         ranked_current_display = _format_ranked_entry(ranked_info.get('current', {}))
         ranked_best_display = _format_ranked_entry(ranked_info.get('best', {}))
         embed.add_field(
