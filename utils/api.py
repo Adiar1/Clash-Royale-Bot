@@ -504,45 +504,25 @@ async def get_player_info(player_tag: str) -> dict:
 
 
 async def get_player_trophies(player_tag: str, player_info: dict = None) -> int:
-
+    """Get player's current trophies - simplified for new 12k max trophy system."""
     if not player_info:
         player_info = await get_player_info(player_tag)
 
     if not player_info:
         return 0
 
-    trophies = player_info.get('trophies', 0)
-
-    # If trophies are at max (10000), check for seasonal trophies
-    if trophies == 10000:
-        progress = player_info.get('progress', {})
-        # Find the seasonal trophy road entry (key starts with "seasonal-trophy-road-")
-        for key, value in progress.items():
-            if key.startswith('seasonal-trophy-road-'):
-                seasonal_trophies = value.get('trophies', 0)
-                return seasonal_trophies
-    return trophies
+    return player_info.get('trophies', 0)
 
 
 async def get_player_best_trophies(player_tag: str, player_info: dict = None) -> int:
-
+    """Get player's best trophies - simplified for new 12k max trophy system."""
     if not player_info:
         player_info = await get_player_info(player_tag)
 
     if not player_info:
         return 0
 
-    best_trophies = player_info.get('bestTrophies', 0)
-
-    # If best trophies are at max (10000), check for seasonal best trophies
-    if best_trophies == 10000:
-        progress = player_info.get('progress', {})
-        # Find the seasonal trophy road entry (key starts with "seasonal-trophy-road-")
-        for key, value in progress.items():
-            if key.startswith('seasonal-trophy-road-'):
-                seasonal_best_trophies = value.get('bestTrophies', 0)
-                return seasonal_best_trophies
-    return best_trophies
+    return player_info.get('bestTrophies', 0)
 
 
 async def get_player_path_of_legends_info(player_tag: str) -> dict:
