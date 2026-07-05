@@ -1,23 +1,25 @@
-import os
-from dotenv import load_dotenv
-from bot import bot
-from utils.database import init_db, logger
+import logging
+import sys
+
+from bot import ClashBot
+from config import Config, ConfigError
 
 
-def main():
-    load_dotenv()
+def main() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+
     try:
-        init_db()  # Initialize the database before running the bot
-        logger.info("Database initialized successfully.")
-    except Exception as e:
-        logger.error(f"Error initializing database: {e}")
-    TOKEN = os.getenv('DISCORD_TOKEN')
+        config = Config.from_env()
+    except ConfigError as exc:
+        logging.getLogger(__name__).error("%s", exc)
+        sys.exit(1)
 
-    if TOKEN:
-        bot.run(TOKEN)
-    else:
-        logger.error("DISCORD_TOKEN not found in environment variables.")
+    bot = ClashBot(config)
+    bot.run(config.discord_token)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
