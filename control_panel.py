@@ -1,11 +1,12 @@
-from flask import Flask, render_template, request, redirect, url_for, send_file, session
 import os
-import sys
-import subprocess
 import sqlite3
-from dotenv import load_dotenv
+import subprocess
+import sys
 from functools import wraps
 from pathlib import Path
+
+from dotenv import load_dotenv
+from flask import Flask, redirect, render_template, request, send_file, session, url_for
 
 
 # ---- Resolve repo root regardless of where the app is launched ----
@@ -29,7 +30,9 @@ STATIC_DIR = BOT_DIR / "linode" / "static"  # optional; use if you have one
 load_dotenv(ENV_FILE if ENV_FILE.exists() else None)
 
 # Stable secret key (don't regenerate on every restart or you'll get logged out)
-SECRET_KEY = os.getenv("FLASK_SECRET_KEY") or os.getenv("SECRET_KEY") or "change-me"
+SECRET_KEY = os.getenv("FLASK_SECRET_KEY") or os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("FLASK_SECRET_KEY must be set to run the control panel.")
 
 app = Flask(__name__, template_folder=str(TEMPLATES_DIR),
             static_folder=str(STATIC_DIR) if STATIC_DIR.exists() else None)

@@ -22,7 +22,7 @@ To use this bot in your Discord server, simply click on the following link:
 
 ## Prerequisites
 
-- Python 3.8+
+- Python 3.12+
 - Discord Bot Token found [here](https://discord.com/developers/applications)
 - Clash Royale API Key found [here](https://developer.clashroyale.com/#/)
 
@@ -34,18 +34,18 @@ To use this bot in your Discord server, simply click on the following link:
    cd Clash-Royale-Bot
    ```
 
-2. Install required packages:
+2. Install the project (dependencies are pinned in `pyproject.toml`):
    ```
-   pip install discord.py aiohttp requests numpy matplotlib python-dotenv prettytable
+   python -m venv .venv && source .venv/bin/activate
+   pip install .
    ```
 
 3. Create a `.env` file in the root directory with the following content:
    ```
    DISCORD_TOKEN=your_discord_bot_token
    CLASH_ROYALE_API_KEY=your_clash_royale_api_key
+   DECKAI_API_KEY=optional_deckai_key   # only needed for /spy_ai
    ```
-
-   Replace `your_discord_bot_token` and `your_clash_royale_api_key` with your actual Discord bot token and Clash Royale API key.
 
 ## Usage
 
@@ -53,6 +53,31 @@ Run the bot using:
 
 ```
 python main.py
+```
+
+On first start after upgrading from the old schema, the database is migrated
+automatically (the original tables are kept as `legacy_*` backups).
+
+## Project Structure
+
+```
+main.py       entry point: config -> bot.run()
+bot.py        ClashBot: shared aiohttp session, service clients, global error handler
+config.py     typed env config (fails fast on missing vars)
+errors.py     BotError hierarchy shown to users by the global handler
+cogs/         slash commands grouped by domain (war, clan, links, admin, misc)
+services/     all external HTTP calls (Clash Royale API, DeckAI) + scoring math
+db/           aiosqlite schema/migration + repository with every query
+ui/           shared embeds, emoji constants, and reusable views
+tests/        pytest suite (repository, migration, war-log math, HTTP client)
+```
+
+## Development
+
+```
+pip install --group dev .
+ruff check .        # lint
+pytest              # tests
 ```
 
 ## Commands
