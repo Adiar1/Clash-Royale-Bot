@@ -419,7 +419,7 @@ class MiscCog(commands.Cog):
             value="""
 - `/nicklink [clan_tag] [nickname]` - Link clan tag to nickname (server specific)
 - `/viewnicks` - View clan nicknames in this server
-- `/reminders [channel] [clan_tag]` - Ping member with less than 4 decks used
+- `/reminders [clan_tag]` - Set up automated attack reminders sent on war days (server specific)
 - `/editperms` - Edit privileged roles (server specific)
 - `/viewperms` - View privileged roles
 - `/editmemberroles` - Edit roles for clan roles (server specific)

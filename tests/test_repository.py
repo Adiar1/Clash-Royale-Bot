@@ -80,6 +80,34 @@ async def test_member_roles(repo):
         await repo.set_member_role(9, "leader; DROP TABLE member_roles", 1)
 
 
+async def test_reminders(repo):
+    assert await repo.reminder("CLAN01", 1) is None
+    assert await repo.all_reminders() == []
+
+    await repo.set_reminder("#clan01", 1, 555, "America/New_York", ["21:00", "18:00"])
+    reminder = await repo.reminder("clan01", 1)
+    assert reminder.clan_tag == "CLAN01"
+    assert reminder.channel_id == 555
+    assert reminder.timezone == "America/New_York"
+    assert reminder.times == ("18:00", "21:00")  # stored sorted
+
+    await repo.set_reminder_channel("CLAN01", 1, 777)
+    assert (await repo.reminder("CLAN01", 1)).channel_id == 777
+
+    # Re-saving replaces the previous times instead of accumulating them
+    await repo.set_reminder("CLAN01", 1, 777, "UTC", ["09:00"])
+    reminder = await repo.reminder("CLAN01", 1)
+    assert reminder.timezone == "UTC"
+    assert reminder.times == ("09:00",)
+
+    await repo.set_reminder("CLAN02", 2, 888, "UTC", ["12:00"])
+    assert {r.clan_tag for r in await repo.all_reminders()} == {"CLAN01", "CLAN02"}
+
+    assert await repo.delete_reminder("CLAN01", 1) is True
+    assert await repo.delete_reminder("CLAN01", 1) is False
+    assert await repo.reminder("CLAN01", 1) is None
+
+
 async def test_deckai_links(repo):
     assert await repo.deckai_id("XYZ") is None
     await repo.set_deckai_id("#xyz", "deck-1")

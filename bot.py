@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class ClashBot(commands.Bot):
-    """Bot with shared service clients and repository attached.
+    """Bot with shared service clients and repository attached
 
     Cogs reach these through ``interaction.client`` / ``self.bot``:
     ``bot.cr`` (Clash Royale API), ``bot.deckai`` (DeckAI API),
