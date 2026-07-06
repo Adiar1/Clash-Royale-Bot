@@ -6,7 +6,7 @@ from functools import wraps
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, redirect, render_template, request, send_file, session, url_for
+from flask import Flask, flash, redirect, render_template, request, send_file, session, url_for
 
 
 # ---- Resolve repo root regardless of where the app is launched ----
@@ -59,13 +59,15 @@ def login():
         if password == os.getenv('ADMIN_PASSWORD'):
             session['logged_in'] = True
             return redirect(request.args.get('next') or url_for('index'))
-        return 'Invalid password'
+        flash('Invalid password.', 'error')
+        return redirect(url_for('login', next=request.args.get('next')))
     return render_template('login.html')
 
 
 @app.route('/logout')
 def logout():
     session.pop('logged_in', None)
+    flash('Logged out.', 'info')
     return redirect(url_for('login'))
 
 
@@ -84,8 +86,10 @@ def start_bot():
     if BOT_PROCESS is None:
         python = sys.executable or "python3"
         BOT_PROCESS = subprocess.Popen([python, str(BOT_SCRIPT)], cwd=str(BOT_DIR))
-        return redirect(url_for('index'))
-    return "Bot is already running. <a href='/'>Go back</a>"
+        flash('Bot started.', 'success')
+    else:
+        flash('Bot is already running.', 'info')
+    return redirect(url_for('index'))
 
 
 @app.route('/stop', methods=['POST'])
@@ -100,6 +104,9 @@ def stop_bot():
             BOT_PROCESS.kill()
             BOT_PROCESS.wait()
         BOT_PROCESS = None
+        flash('Bot stopped.', 'success')
+    else:
+        flash('Bot is not running.', 'info')
     return redirect(url_for('index'))
 
 
@@ -109,7 +116,8 @@ def update_files():
     try:
         # Check if .git exists
         if not (BOT_DIR / ".git").exists():
-            return f"Error: Not a git repository. .git folder not found in {BOT_DIR}. <a href='/'>Go back</a>"
+            flash(f"Not a git repository: .git folder not found in {BOT_DIR}.", 'error')
+            return redirect(url_for('index'))
 
         # Check current branch
         branch_result = subprocess.run(
@@ -150,33 +158,29 @@ def update_files():
 
         # Check if anything was actually updated
         if "Already up to date" in pull_result.stdout or "Already up-to-date" in pull_result.stdout:
-            message = "Bot is already on the newest version!"
+            message = "Bot is already on the newest version."
         else:
-            message = "Bot updated successfully!"
+            message = "Bot updated successfully."
 
         if stashed:
-            message += " (Your local changes were preserved)"
+            message += " Your local changes were preserved."
 
-        return f"{message} <a href='/'>Go back</a>"
+        flash(message, 'success')
+        return redirect(url_for('index'))
 
     except subprocess.CalledProcessError as e:
-        error_output = e.stderr if e.stderr else e.stdout
-        return f"""
-        <h3>Failed to update the bot</h3>
-        <p><strong>Error:</strong> {e}</p>
-        <p><strong>Output:</strong></p>
-        <pre>{error_output}</pre>
-        <p><strong>Possible solutions:</strong></p>
-        <ul>
-            <li>Check if you have internet connection</li>
-            <li>Verify Git is installed: <code>git --version</code></li>
-            <li>Check if the repository is properly configured</li>
-            <li>If it's a private repo, ensure SSH keys or credentials are set up</li>
-        </ul>
-        <a href='/'>Go back</a>
-        """
+        error_output = (e.stderr or e.stdout or str(e)).strip()
+        app.logger.error("git update failed: %s", error_output)
+        flash(
+            "Failed to update the bot.\n"
+            f"{error_output}\n"
+            "Check your internet connection, that git is installed, and that repo credentials are set up.",
+            'error'
+        )
+        return redirect(url_for('index'))
     except Exception as e:
-        return f"Unexpected error: {e}. <a href='/'>Go back</a>"
+        flash(f"Unexpected error: {e}", 'error')
+        return redirect(url_for('index'))
 
 
 @app.route('/update_and_restart', methods=['POST'])
@@ -186,7 +190,8 @@ def update_and_restart():
     try:
         # Check if .git exists
         if not (BOT_DIR / ".git").exists():
-            return f"Error: Not a git repository. .git folder not found in {BOT_DIR}. <a href='/'>Go back</a>"
+            flash(f"Not a git repository: .git folder not found in {BOT_DIR}.", 'error')
+            return redirect(url_for('index'))
 
         # Check current branch
         branch_result = subprocess.run(
@@ -239,31 +244,38 @@ def update_and_restart():
 
         # Check if anything was updated
         if "Already up to date" in pull_result.stdout or "Already up-to-date" in pull_result.stdout:
-            message = "Bot was already on newest version but has been restarted!"
+            message = "Bot was already on the newest version but has been restarted."
         else:
-            message = "Bot updated and restarted successfully!"
+            message = "Bot updated and restarted successfully."
 
         if stashed:
-            message += " (Local changes preserved)"
+            message += " Local changes were preserved."
 
-        return f"{message} <a href='/'>Go back</a>"
+        flash(message, 'success')
+        return redirect(url_for('index'))
 
     except subprocess.CalledProcessError as e:
         BOT_PROCESS = None
-        error_output = e.stderr if e.stderr else e.stdout
-        return f"""
-        <h3>Failed to update and restart</h3>
-        <p><strong>Error:</strong> {e}</p>
-        <p><strong>Output:</strong></p>
-        <pre>{error_output}</pre>
-        <a href='/'>Go back</a>
-        """
+        error_output = (e.stderr or e.stdout or str(e)).strip()
+        app.logger.error("git update (with restart) failed: %s", error_output)
+        flash(f"Failed to update and restart the bot.\n{error_output}", 'error')
+        return redirect(url_for('index'))
     except Exception as e:
         BOT_PROCESS = None
-        return f"Unexpected error during update and restart: {e}. <a href='/'>Go back</a>"
+        flash(f"Unexpected error during update and restart: {e}", 'error')
+        return redirect(url_for('index'))
 
 
 # ---------- File viewer (safe within repo only) ----------
+def format_size(num_bytes: int) -> str:
+    size = float(num_bytes)
+    for unit in ("B", "KB", "MB", "GB"):
+        if size < 1024 or unit == "GB":
+            return f"{size:.0f} {unit}" if unit == "B" else f"{size:.1f} {unit}"
+        size /= 1024
+    return f"{size:.1f} GB"
+
+
 @app.route('/files')
 @login_required
 def file_viewer():
@@ -273,7 +285,8 @@ def file_viewer():
             items.append({
                 "name": item.name,
                 "path": str(item.relative_to(BOT_DIR)),  # relative path
-                "is_dir": item.is_dir()
+                "is_dir": item.is_dir(),
+                "size": None if item.is_dir() else format_size(item.stat().st_size),
             })
         return items
 
@@ -281,14 +294,16 @@ def file_viewer():
     # Normalize & prevent path traversal
     full_path = (BOT_DIR / rel).resolve()
     if not str(full_path).startswith(str(BOT_DIR.resolve())):
-        return "Invalid path. <a href='/files'>Go back</a>"
+        flash('Invalid path.', 'error')
+        return redirect(url_for('file_viewer'))
 
     if full_path.is_dir():
         files = list_items(full_path)
         return render_template("files.html", files=files, current_dir=str(Path(rel)))
     if full_path.is_file():
         return send_file(full_path)
-    return "Invalid path. <a href='/files'>Go back</a>"
+    flash('Invalid path.', 'error')
+    return redirect(url_for('file_viewer'))
 
 
 # ---------- .env editor ----------
@@ -298,6 +313,7 @@ def edit_env():
     if request.method == 'POST':
         new_content = request.form.get('env_content', '')
         ENV_FILE.write_text(new_content, encoding='utf-8')
+        flash('Environment saved. Restart the bot to apply changes.', 'success')
         return redirect(url_for('edit_env'))
     env_content = ENV_FILE.read_text(encoding='utf-8') if ENV_FILE.exists() else ""
     return render_template('edit_env.html', env_content=env_content)
@@ -322,7 +338,8 @@ def view_database():
         conn.close()
         return render_template('database.html', database_data=database_data)
     except Exception as e:
-        return f"Error reading database: {e}"
+        flash(f"Error reading database: {e}", 'error')
+        return redirect(url_for('index'))
 
 
 if __name__ == '__main__':
