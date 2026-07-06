@@ -122,8 +122,7 @@ pytest              # tests
 
 ### Account Linking
 
-- `/link <player_tag> [alt_account] [deckai_id]`: Link, unlink, or update a player tag on your Discord account
-- `/forcelink <target_user> <player_tag> [alt_account] [deckai_id]`: Forcefully link a player tag to another user's Discord account
+- `/link [user]`: Open the link manager to set a main player tag, add alts, edit DeckAI IDs, or remove accounts (managing another user requires privileges)
 - `/profile [user]`: View linked player tags for yourself or another user
 - `/wipelinks [user]`: Remove linked player tags
 
