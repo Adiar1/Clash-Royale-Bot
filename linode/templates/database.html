@@ -1,106 +1,49 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Database Viewer</title>
-    <style>
-        :root {
-            --primary-color: #7B68EE;
-            --background-dark: #1E133E;
-            --secondary-dark: #2C2541;
-            --text-color: #E0E0E0;
-            --hover-color: #4A3A6D;
-        }
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--background-dark);
-            color: var(--text-color);
-            line-height: 1.6;
-            padding: 20px;
-        }
-        .container {
-            background-color: var(--secondary-dark);
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            padding: 30px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        h1 {
-            color: var(--primary-color);
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        .back-link {
-            display: block;
-            text-align: center;
-            color: var(--primary-color);
-            text-decoration: none;
-            margin-bottom: 20px;
-            font-weight: 600;
-        }
-        .table-container {
-            overflow-x: auto;
-            margin-bottom: 30px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background-color: var(--background-dark);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-        }
-        th, td {
-            border: 1px solid var(--hover-color);
-            padding: 10px;
-            text-align: left;
-            color: var(--text-color);
-        }
-        th {
-            background-color: var(--primary-color);
-            color: white;
-            font-weight: 600;
-        }
-        tr:nth-child(even) {
-            background-color: rgba(42, 37, 65, 0.5);
-        }
-        tr:hover {
-            background-color: var(--hover-color);
-        }
-        h2 {
-            color: var(--primary-color);
-            margin: 20px 0 10px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Database Viewer</h1>
-        <a href="/" class="back-link">Go Back</a>
-        {% for table in database_data %}
-            <h2>Table: {{ table.table_name }}</h2>
-            <div class="table-container">
-                <table>
-                    <tr>
-                        {% for column in table.columns %}
-                            <th>{{ column }}</th>
-                        {% endfor %}
-                    </tr>
-                    {% for row in table.rows %}
-                        <tr>
-                            {% for cell in row %}
-                                <td>{{ cell }}</td>
-                            {% endfor %}
-                        </tr>
-                    {% endfor %}
-                </table>
-            </div>
-        {% endfor %}
+{% extends "base.html" %}
+{% block title %}Database{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Database</h1>
+</div>
+
+{% if not database_data %}
+    <div class="card"><p class="empty-state">No tables found.</p></div>
+{% endif %}
+
+{% for table in database_data %}
+    <div class="table-toolbar">
+        <h2>{{ table.table_name }}</h2>
+        <span class="row-count">{{ table.rows|length }} row{{ '' if table.rows|length == 1 else 's' }}</span>
     </div>
-</body>
-</html>
+    <input type="text" class="table-filter" placeholder="Filter rows…" data-filter-target="table-{{ loop.index }}">
+    <div class="table-container">
+        <table id="table-{{ loop.index }}">
+            <tr>
+                {% for column in table.columns %}
+                    <th>{{ column }}</th>
+                {% endfor %}
+            </tr>
+            {% for row in table.rows %}
+                <tr>
+                    {% for cell in row %}
+                        <td>{{ cell }}</td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </table>
+    </div>
+{% endfor %}
+
+<script>
+    document.querySelectorAll('.table-filter').forEach((input) => {
+        input.addEventListener('input', () => {
+            const table = document.getElementById(input.dataset.filterTarget);
+            const query = input.value.trim().toLowerCase();
+            const rows = table.querySelectorAll('tr');
+            rows.forEach((row, index) => {
+                if (index === 0) return; // header row
+                row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
+            });
+        });
+    });
+</script>
+{% endblock %}
