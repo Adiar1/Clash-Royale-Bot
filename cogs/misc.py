@@ -408,8 +408,7 @@ class MiscCog(commands.Cog):
         embed.add_field(
             name="🔗 Account Linking",
             value="""
-- `/link [player_tag] [alt_account] [deckai_id]` - Link, unlink, or update your account (non server specific)
-- `/forcelink [@user] [player_tag] [alt_account] [deckai_id]` - Force link an account (non server specific)
+- `/link [@user]` - Open the link manager to set a main tag, add alts, edit DeckAI IDs, or remove accounts (managing another user requires privileges; non server specific)
 - `/profile [@user]` - View linked accounts
 - `/wipelinks [@user]` - Remove linked accounts
             """,

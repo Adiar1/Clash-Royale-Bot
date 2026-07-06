@@ -1,74 +1,282 @@
 import asyncio
+import logging
 
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, User, app_commands
 from discord.ext import commands
-from discord.ui import Button, Select, View
+from discord.ui import Button, Modal, Select, TextInput, View
 
-from cogs.checks import is_privileged
-from errors import BotError, ClanNotFound, PlayerNotFound
+from cogs.checks import is_privileged, user_is_privileged
+from db.repository import MAX_LINKED_TAGS
+from errors import BotError, ClanNotFound
 from services.clash_royale import normalize_tag
-from ui.embeds import EMBED_COLOR, SUCCESS_COLOR, make_embed
+from ui.embeds import EMBED_COLOR, make_embed
 from ui.emojis import TROPHYROAD_EMOJI
 from ui.views import ConfirmView
 
-
-def _add_player_fields(embed: discord.Embed, player: dict) -> None:
-    embed.add_field(name="Player Name", value=player.get("name", "Unknown"), inline=True)
-    embed.add_field(name="Clan", value=player.get("clan", {}).get("name", "No Clan"), inline=True)
-    embed.add_field(name="Trophies", value=str(player.get("trophies", 0)), inline=True)
+logger = logging.getLogger(__name__)
 
 
-class PlayerTagView(View):
-    """Update / unlink / add-as-alt actions for an already-linked tag."""
+async def _send_interaction_error(interaction: Interaction, error: Exception) -> None:
+    """Mirror bot.on_app_command_error for component/modal interactions,
+    which don't go through the command tree's error handler."""
+    if isinstance(error, BotError):
+        message = error.user_message
+    else:
+        logger.error("Unhandled error in link manager", exc_info=error)
+        message = "An unexpected error occurred while processing your request."
+    try:
+        if interaction.response.is_done():
+            await interaction.followup.send(message, ephemeral=True)
+        else:
+            await interaction.response.send_message(message, ephemeral=True)
+    except discord.HTTPException:
+        logger.warning("Could not deliver error message for interaction %s", interaction.id)
 
-    def __init__(self, player_tag: str, target_user: User | None = None, deckai_id: str | None = None):
-        super().__init__(timeout=300)
-        self.player_tag = player_tag
-        self.target_user = target_user
-        self.deckai_id = deckai_id
 
-    def _user_id(self, interaction: Interaction) -> int:
-        return self.target_user.id if self.target_user else interaction.user.id
+class _EphemeralView(View):
+    """Short-lived view for follow-up pickers spawned by the link manager."""
 
-    def _mention(self, interaction: Interaction) -> str:
-        return self.target_user.mention if self.target_user else "your Discord account"
+    async def on_error(self, interaction: Interaction, error: Exception, item) -> None:
+        await _send_interaction_error(interaction, error)
 
-    async def _store_deckai(self, interaction: Interaction):
-        if self.deckai_id:
-            await interaction.client.repo.set_deckai_id(self.player_tag, self.deckai_id)
 
-    @discord.ui.button(label="Update Tag", style=ButtonStyle.primary)
-    async def update(self, interaction: Interaction, button: Button):
-        repo = interaction.client.repo
-        await repo.link_player_tag(self._user_id(interaction), self.player_tag, alt=False)
-        await self._store_deckai(interaction)
-        extra = f" and DeckAI ID `{self.deckai_id}`" if self.deckai_id else ""
-        await interaction.response.send_message(
-            f"Player tag `#{self.player_tag}`{extra} updated in {self._mention(interaction)}."
+class LinkPanel(View):
+    """Interactive manager for the accounts linked to a Discord user.
+
+    One message shows the current links (tags, names, DeckAI IDs) with
+    buttons to set the main tag, add alts, edit DeckAI IDs, and remove
+    accounts. ``target`` is whose links are edited; only the invoker may
+    use the components.
+    """
+
+    def __init__(self, invoker_id: int, target: User):
+        super().__init__(timeout=600)
+        self.invoker_id = invoker_id
+        self.target = target
+        self.message: discord.Message | None = None
+        self.tags: list[str] = []
+        self.names: dict[str, str] = {}
+
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        return interaction.user.id == self.invoker_id
+
+    async def on_error(self, interaction: Interaction, error: Exception, item) -> None:
+        await _send_interaction_error(interaction, error)
+
+    def possessive(self) -> str:
+        return f"{self.target.mention}'s account" if self.target.id != self.invoker_id else "your account"
+
+    async def build_embed(self, bot) -> discord.Embed:
+        """Rebuild the panel embed from the database and sync button states."""
+        self.tags = await bot.repo.player_tags(self.target.id)
+
+        async def fetch(tag: str) -> dict | None:
+            try:
+                return await bot.cr.player(tag)
+            except Exception:
+                return None
+
+        players = await asyncio.gather(*[fetch(tag) for tag in self.tags])
+        deckai_ids = await asyncio.gather(*[bot.repo.deckai_id(tag) for tag in self.tags])
+        self.names = {
+            tag: (player or {}).get("name", "Unknown")
+            for tag, player in zip(self.tags, players, strict=True)
+        }
+
+        embed = discord.Embed(title="🔗 Link Manager", color=EMBED_COLOR)
+        embed.set_author(
+            name=f"{self.target.display_name} ({self.target.id})",
+            icon_url=self.target.avatar.url if self.target.avatar else self.target.default_avatar.url,
         )
 
-    @discord.ui.button(label="Unlink Tag", style=ButtonStyle.danger)
-    async def unlink(self, interaction: Interaction, button: Button):
-        repo = interaction.client.repo
-        await repo.unlink_player_tags(self._user_id(interaction), [self.player_tag])
-        await repo.delete_deckai_id(self.player_tag)
-        await interaction.response.send_message(
-            f"Player tag `#{self.player_tag}` unlinked from {self._mention(interaction)}."
-        )
+        if not self.tags:
+            embed.description = "No accounts linked yet. Use **Set Main Tag** below to link the first one."
+        else:
+            sections = ["__**Main Account**__"]
+            rows = zip(self.tags, players, deckai_ids, strict=True)
+            for index, (tag, player, deckai_id) in enumerate(rows, 1):
+                if index == 2:
+                    sections.append(f"__**Alt Accounts ({len(self.tags) - 1})**__")
+                name = (player or {}).get("name", "Unknown")
+                trophies = (player or {}).get("trophies", "?")
+                deckai = f"`{deckai_id}`" if deckai_id else "*not set*"
+                sections.append(
+                    f"**{index}. [{name}](https://royaleapi.com/player/{tag})** `#{tag}`\n"
+                    f"{TROPHYROAD_EMOJI} {trophies} · DeckAI ID: {deckai}"
+                )
+            embed.description = "\n\n".join(sections)
+            if len(self.tags) > 1:
+                embed.set_footer(text="Removing the main account promotes the first alt.")
 
-    @discord.ui.button(label="Add as Alt Account", style=ButtonStyle.secondary)
-    async def add_alt(self, interaction: Interaction, button: Button):
-        repo = interaction.client.repo
-        result = await repo.link_player_tag(self._user_id(interaction), self.player_tag, alt=True)
-        if result == "too_many_tags":
-            await interaction.response.send_message("You can't link more than 20 tags.")
+        self.add_alt.disabled = not self.tags or len(self.tags) >= MAX_LINKED_TAGS
+        self.set_deckai.disabled = not self.tags
+        self.remove_tag.disabled = not self.tags
+        return embed
+
+    async def refresh(self, bot) -> None:
+        embed = await self.build_embed(bot)
+        if self.message is None:
             return
-        await self._store_deckai(interaction)
-        extra = f" with DeckAI ID `{self.deckai_id}`" if self.deckai_id else ""
+        try:
+            await self.message.edit(embed=embed, view=self)
+        except discord.HTTPException:
+            logger.warning("Could not refresh link manager message %s", self.message.id)
+
+    async def on_timeout(self) -> None:
+        for item in self.children:
+            item.disabled = True
+        if self.message is not None:
+            try:
+                await self.message.edit(view=self)
+            except discord.HTTPException:
+                pass
+
+    @discord.ui.button(label="Set Main Tag", style=ButtonStyle.primary)
+    async def set_main(self, interaction: Interaction, button: Button):
+        await interaction.response.send_modal(TagModal(self, alt=False))
+
+    @discord.ui.button(label="Add Alt Tag", style=ButtonStyle.secondary)
+    async def add_alt(self, interaction: Interaction, button: Button):
+        await interaction.response.send_modal(TagModal(self, alt=True))
+
+    @discord.ui.button(label="Set DeckAI ID", style=ButtonStyle.secondary)
+    async def set_deckai(self, interaction: Interaction, button: Button):
+        if len(self.tags) == 1:
+            tag = self.tags[0]
+            current = await interaction.client.repo.deckai_id(tag)
+            await interaction.response.send_modal(DeckAIModal(self, tag, current))
+            return
+        view = _EphemeralView(timeout=300)
+        view.add_item(AccountSelect(self, mode="deckai"))
         await interaction.response.send_message(
-            f"Player tag `#{self.player_tag}`{extra} linked as an alt account to {self._mention(interaction)}."
+            "Select the account to edit the DeckAI ID for:", view=view, ephemeral=True
         )
+
+    @discord.ui.button(label="Remove Tag", style=ButtonStyle.danger)
+    async def remove_tag(self, interaction: Interaction, button: Button):
+        view = _EphemeralView(timeout=300)
+        view.add_item(AccountSelect(self, mode="remove"))
+        await interaction.response.send_message(
+            "Select the account(s) to remove:", view=view, ephemeral=True
+        )
+
+
+class AccountSelect(Select):
+    """Account picker for the link manager: opens the DeckAI modal for one
+    account (mode="deckai") or unlinks the chosen accounts (mode="remove")."""
+
+    def __init__(self, panel: LinkPanel, mode: str):
+        self.panel = panel
+        self.mode = mode
+        options = [
+            SelectOption(
+                label=f"{index}. {panel.names.get(tag, 'Unknown')}" + (" (main)" if index == 1 else ""),
+                description=f"#{tag}",
+                value=tag,
+            )
+            for index, tag in enumerate(panel.tags, 1)
+        ]
+        super().__init__(
+            placeholder="Select accounts to remove..." if mode == "remove" else "Select an account...",
+            min_values=1,
+            max_values=len(options) if mode == "remove" else 1,
+            options=options,
+        )
+
+    async def callback(self, interaction: Interaction):
+        if self.mode == "deckai":
+            tag = self.values[0]
+            current = await interaction.client.repo.deckai_id(tag)
+            await interaction.response.send_modal(DeckAIModal(self.panel, tag, current))
+            return
+
+        await interaction.response.defer()
+        repo = interaction.client.repo
+        await repo.unlink_player_tags(self.panel.target.id, self.values)
+        for tag in self.values:
+            await repo.delete_deckai_id(tag)
+        await self.panel.refresh(interaction.client)
+        removed = ", ".join(f"`#{tag}`" for tag in self.values)
+        await interaction.edit_original_response(
+            content=f"Removed {removed} from {self.panel.possessive()}.", view=None
+        )
+
+
+class TagModal(Modal):
+    player_tag = TextInput(label="Player Tag", placeholder="#2PP8Q0J2Y", min_length=3, max_length=16)
+    deckai_id = TextInput(label="DeckAI ID (optional)", required=False, max_length=64,
+                          placeholder="Attach a DeckAI ID to this tag")
+
+    def __init__(self, panel: LinkPanel, alt: bool):
+        super().__init__(title="Add Alt Tag" if alt else "Set Main Tag", timeout=600)
+        self.panel = panel
+        self.alt = alt
+
+    async def on_error(self, interaction: Interaction, error: Exception) -> None:
+        await _send_interaction_error(interaction, error)
+
+    async def on_submit(self, interaction: Interaction):
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        bot = interaction.client
+        tag = normalize_tag(self.player_tag.value)
+        player = await bot.cr.player(tag)  # raises PlayerNotFound -> on_error
+
+        result = await bot.repo.link_player_tag(self.panel.target.id, tag, alt=self.alt)
+        if result == "exists":
+            await interaction.followup.send(
+                f"`#{tag}` is already linked to {self.panel.possessive()}.", ephemeral=True
+            )
+            return
+        if result == "no_main_tag":
+            await interaction.followup.send("Set a main tag before adding alts.", ephemeral=True)
+            return
+        if result == "too_many_tags":
+            await interaction.followup.send(
+                f"You can't link more than {MAX_LINKED_TAGS} tags.", ephemeral=True
+            )
+            return
+
+        deckai_note = ""
+        deckai_value = self.deckai_id.value.strip()
+        if deckai_value:
+            await bot.repo.set_deckai_id(tag, deckai_value)
+            deckai_note = f" with DeckAI ID `{deckai_value}`"
+
+        await self.panel.refresh(bot)
+        kind = "an alt account on" if self.alt else "the main account on"
+        await interaction.followup.send(
+            f"✅ **{player.get('name', 'Unknown')}** `#{tag}`{deckai_note} is now {kind} "
+            f"{self.panel.possessive()}.",
+            ephemeral=True,
+        )
+
+
+class DeckAIModal(Modal):
+    deckai_id = TextInput(label="DeckAI ID", required=False, max_length=64,
+                          placeholder="Leave empty to remove the current ID")
+
+    def __init__(self, panel: LinkPanel, player_tag: str, current: str | None):
+        super().__init__(title=f"DeckAI ID for #{player_tag}", timeout=600)
+        self.panel = panel
+        self.player_tag = player_tag
+        self.deckai_id.default = current
+
+    async def on_error(self, interaction: Interaction, error: Exception) -> None:
+        await _send_interaction_error(interaction, error)
+
+    async def on_submit(self, interaction: Interaction):
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        repo = interaction.client.repo
+        value = self.deckai_id.value.strip()
+        if value:
+            await repo.set_deckai_id(self.player_tag, value)
+            message = f"✅ DeckAI ID for `#{self.player_tag}` set to `{value}`."
+        else:
+            await repo.delete_deckai_id(self.player_tag)
+            message = f"✅ DeckAI ID removed from `#{self.player_tag}`."
+        await self.panel.refresh(interaction.client)
+        await interaction.followup.send(message, ephemeral=True)
 
 
 class WipeTagSelect(Select):
@@ -89,74 +297,22 @@ class LinksCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # ---- /link & /forcelink ----
+    # ---- /link ----
 
-    async def _link_flow(self, interaction: Interaction, target_user: User | None,
-                         player_tag: str, alt_account: bool, deckai_id: str | None):
-        tag = normalize_tag(player_tag)
-        try:
-            player = await self.bot.cr.player(tag)
-        except PlayerNotFound:
-            raise BotError("Tag invalid. Please check the tag and try again.") from None
-
-        user = target_user or interaction.user
-        current_tags = await self.bot.repo.player_tags(user.id)
-        possessive = f"{user.mention}'s account" if target_user else "your Discord account"
-
-        if tag in current_tags:
-            embed = discord.Embed(
-                title="Tag Already Linked",
-                description=f"The player tag `#{tag}` is already linked to {possessive}. "
-                            "What would you like to do?",
-                color=0x2B2D31,
-            )
-            _add_player_fields(embed, player)
-            await interaction.response.send_message(embed=embed, view=PlayerTagView(tag, target_user, deckai_id))
-            return
-
-        result = await self.bot.repo.link_player_tag(user.id, tag, alt=alt_account)
-        if result == "no_main_tag":
-            await interaction.response.send_message("You can't have an alternate tag before you put a main one.")
-            return
-        if result == "too_many_tags":
-            await interaction.response.send_message("You can't link more than 20 tags.")
-            return
-
-        if deckai_id:
-            await self.bot.repo.set_deckai_id(tag, deckai_id)
-
-        extra = f" with DeckAI ID `{deckai_id}`" if deckai_id else ""
-        embed = discord.Embed(
-            title="Tag Linked Successfully",
-            description=f"Player tag `#{tag}`{extra} has been linked to {possessive}.",
-            color=SUCCESS_COLOR,
-        )
-        _add_player_fields(embed, player)
-        await interaction.response.send_message(embed=embed)
-
-    @app_commands.command(name="link",
-                          description="Link, unlink, or update your Discord account with a Clash Royale player tag")
-    @app_commands.describe(
-        player_tag="The tag of the player",
-        deckai_id="Optional DeckAI ID to link",
-        alt_account="Is this an alternate account?",
+    @app_commands.command(
+        name="link",
+        description="Open the link manager to edit linked player tags, alts, and DeckAI IDs",
     )
-    async def link(self, interaction: Interaction, player_tag: str,
-                   alt_account: bool = False, deckai_id: str | None = None):
-        await self._link_flow(interaction, None, player_tag, alt_account, deckai_id)
+    @app_commands.describe(user="Manage another user's links instead of your own (requires privileges)")
+    async def link(self, interaction: Interaction, user: User | None = None):
+        target = user or interaction.user
+        if target.id != interaction.user.id and not await user_is_privileged(interaction):
+            raise BotError("You need a privileged role to manage another user's links.")
 
-    @app_commands.command(name="forcelink",
-                          description="Forcefully link a player tag to another user's Discord account")
-    @app_commands.describe(
-        target_user="Mention the user to link the player tag to",
-        player_tag="The tag of the player",
-        deckai_id="Optional DeckAI ID to link",
-        alt_account="Is this an alternate account?",
-    )
-    @is_privileged()
-    async def forcelink(self, interaction: Interaction, target_user: User, player_tag: str,
-                        alt_account: bool = False, deckai_id: str | None = None):
-        await self._link_flow(interaction, target_user, player_tag, alt_account, deckai_id)
+        await interaction.response.defer()
+        panel = LinkPanel(interaction.user.id, target)
+        embed = await panel.build_embed(self.bot)
+        panel.message = await interaction.followup.send(embed=embed, view=panel)
 
     # ---- /profile ----
 
