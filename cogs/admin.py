@@ -1,17 +1,11 @@
 import math
 
 import discord
-from discord import Interaction, TextChannel, app_commands
+from discord import Interaction, app_commands
 from discord.ext import commands
-from prettytable import PrettyTable
 
 from cogs.checks import is_privileged
-from cogs.resolvers import resolve_clan_tag
-from errors import BotError
-from services.clash_royale import race_participants
 from ui.embeds import make_embed
-
-DISCORD_MESSAGE_LIMIT = 1800
 
 MEMBER_POSITIONS = ("Member", "Elder", "Co-Leader")
 
@@ -184,66 +178,3 @@ class AdminCog(commands.Cog):
             role = interaction.guild.get_role(role_id) if role_id else None
             embed.add_field(name=position.capitalize(), value=role.mention if role else "Not set", inline=False)
         await interaction.response.send_message(embed=embed)
-
-    @app_commands.command(name="reminders", description="Check current deck usage for a clan")
-    @app_commands.describe(
-        channel="The channel to send the deck usage report in",
-        clan_tag="The tag of the clan (or a server nickname)",
-    )
-    @is_privileged()
-    async def reminders(self, interaction: Interaction, channel: TextChannel, clan_tag: str):
-        await interaction.response.defer(ephemeral=True)
-        tag = await resolve_clan_tag(interaction, clan_tag)
-
-        clan = await self.bot.cr.clan(tag)
-        members = await self.bot.cr.clan_members(tag)
-        race = await self.bot.cr.current_river_race(tag)
-        participants = race_participants(race)
-        if not participants:
-            raise BotError("No data found for the specified clan.")
-
-        member_tags = {m.tag for m in members}
-        rows = [
-            (p_tag, participant.get("name", "Unknown"), int(participant.get("decksUsedToday", 0)))
-            for p_tag, participant in participants.items()
-            if p_tag in member_tags
-        ]
-        if not rows:
-            await interaction.followup.send(
-                f"No current members have used decks today.\n"
-                f"Total Current Members in {clan['name']}: {len(members)}",
-                ephemeral=True,
-            )
-            return
-
-        await channel.send(
-            f"Player Names with Decks Used Today for Clan #{tag} ({clan['name']}):\n"
-            f"Total Current Members: {len(members)}\n\n"
-        )
-
-        def new_table() -> PrettyTable:
-            table = PrettyTable()
-            table.field_names = ["Player Name", "Decks Used"]
-            return table
-
-        table = new_table()
-        messages = []
-        pings = []
-        for member_tag, name, decks in rows:
-            table.add_row([name, decks])
-            discord_id = await self.bot.repo.discord_id_for_tag(member_tag)
-            if discord_id and decks < 4:
-                pings.append(f"<@{discord_id}>")
-            if len(f"```{table}```") >= DISCORD_MESSAGE_LIMIT:
-                messages.append(f"```{table}```")
-                table = new_table()
-
-        if table.rows:
-            messages.append(f"```{table}```")
-
-        for message in messages:
-            await channel.send(message)
-        if pings:
-            await channel.send(" ".join(pings) + " You have used fewer than 4 decks today!")
-
-        await interaction.followup.send(f"List sent to {channel.mention}.", ephemeral=True)

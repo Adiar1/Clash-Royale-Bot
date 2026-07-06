@@ -98,7 +98,7 @@ Here are some of the available commands:
 - `/clan <clan_tag>`: List current clan members and how many weeks ago they joined
 - `/forcelink <target_user> <player_tag> <alt_account>`: Forcefully link a player tag to another user's Discord account
 - `/nicklink <clan_tag> <nickname>`: Link a clan tag to a nickname
-- `/reminders <channel> <clan_tag>`: Check current deck usage for a clan
+- `/reminders <clan_tag>`: Set up automated attack reminders sent on war days
 - `/rankings <tourny_tag>`: List members' names, scores, and ranks
 
 For a full list of commands, use the `/info` command in Discord after adding the bot to your server.

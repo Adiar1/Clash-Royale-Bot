@@ -1,5 +1,7 @@
 """All database queries live here. Tags are stored normalized (no '#', uppercase)."""
 
+from dataclasses import dataclass
+
 import aiosqlite
 
 from services.clash_royale import normalize_tag
@@ -7,6 +9,15 @@ from services.clash_royale import normalize_tag
 MAX_LINKED_TAGS = 20
 
 MEMBER_ROLE_POSITIONS = ("member", "elder", "coleader")
+
+
+@dataclass(frozen=True)
+class Reminder:
+    clan_tag: str  # normalized
+    guild_id: int
+    channel_id: int
+    timezone: str  # IANA name, e.g. "America/New_York"; used only to display times locally
+    times: tuple[str, ...]  # "HH:MM" in UTC
 
 
 class Repository:
@@ -125,6 +136,69 @@ class Repository:
             (int(guild_id),),
         )
         return [(row[0], row[1]) for row in await cursor.fetchall()]
+
+    # ---- reminders ----
+
+    async def reminder(self, clan_tag: str, guild_id: int) -> Reminder | None:
+        cursor = await self._conn.execute(
+            "SELECT channel_id, timezone FROM reminders WHERE clan_tag = ? AND guild_id = ?",
+            (normalize_tag(clan_tag), int(guild_id)),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return None
+        times = await self._reminder_times(clan_tag, guild_id)
+        return Reminder(normalize_tag(clan_tag), int(guild_id), row[0], row[1], times)
+
+    async def all_reminders(self) -> list[Reminder]:
+        cursor = await self._conn.execute("SELECT clan_tag, guild_id, channel_id, timezone FROM reminders")
+        rows = await cursor.fetchall()
+        return [
+            Reminder(clan_tag, guild_id, channel_id, timezone, await self._reminder_times(clan_tag, guild_id))
+            for clan_tag, guild_id, channel_id, timezone in rows
+        ]
+
+    async def _reminder_times(self, clan_tag: str, guild_id: int) -> tuple[str, ...]:
+        cursor = await self._conn.execute(
+            "SELECT time FROM reminder_times WHERE clan_tag = ? AND guild_id = ? ORDER BY time",
+            (normalize_tag(clan_tag), int(guild_id)),
+        )
+        return tuple(row[0] for row in await cursor.fetchall())
+
+    async def set_reminder(self, clan_tag: str, guild_id: int, channel_id: int,
+                           timezone: str, times: list[str]) -> None:
+        tag = normalize_tag(clan_tag)
+        await self._conn.execute(
+            "INSERT OR REPLACE INTO reminders (clan_tag, guild_id, channel_id, timezone) VALUES (?, ?, ?, ?)",
+            (tag, int(guild_id), int(channel_id), timezone),
+        )
+        await self._conn.execute(
+            "DELETE FROM reminder_times WHERE clan_tag = ? AND guild_id = ?", (tag, int(guild_id))
+        )
+        for time in times:
+            await self._conn.execute(
+                "INSERT OR IGNORE INTO reminder_times (clan_tag, guild_id, time) VALUES (?, ?, ?)",
+                (tag, int(guild_id), time),
+            )
+        await self._conn.commit()
+
+    async def set_reminder_channel(self, clan_tag: str, guild_id: int, channel_id: int) -> None:
+        await self._conn.execute(
+            "UPDATE reminders SET channel_id = ? WHERE clan_tag = ? AND guild_id = ?",
+            (int(channel_id), normalize_tag(clan_tag), int(guild_id)),
+        )
+        await self._conn.commit()
+
+    async def delete_reminder(self, clan_tag: str, guild_id: int) -> bool:
+        tag = normalize_tag(clan_tag)
+        await self._conn.execute(
+            "DELETE FROM reminder_times WHERE clan_tag = ? AND guild_id = ?", (tag, int(guild_id))
+        )
+        cursor = await self._conn.execute(
+            "DELETE FROM reminders WHERE clan_tag = ? AND guild_id = ?", (tag, int(guild_id))
+        )
+        await self._conn.commit()
+        return cursor.rowcount > 0
 
     # ---- privileged roles ----
 

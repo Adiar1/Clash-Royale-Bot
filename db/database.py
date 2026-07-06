@@ -36,6 +36,21 @@ CREATE TABLE IF NOT EXISTS member_roles (
     elder_id    INTEGER,
     coleader_id INTEGER
 );
+
+CREATE TABLE IF NOT EXISTS reminders (
+    clan_tag   TEXT NOT NULL,
+    guild_id   INTEGER NOT NULL,
+    channel_id INTEGER NOT NULL,
+    timezone   TEXT NOT NULL,
+    PRIMARY KEY (clan_tag, guild_id)
+);
+
+CREATE TABLE IF NOT EXISTS reminder_times (
+    clan_tag TEXT NOT NULL,
+    guild_id INTEGER NOT NULL,
+    time     TEXT NOT NULL,
+    PRIMARY KEY (clan_tag, guild_id, time)
+);
 """
 
 
