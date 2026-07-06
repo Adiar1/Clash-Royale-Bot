@@ -1,86 +1,17 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit .env</title>
-    <style>
-        :root {
-            --primary-color: #7B68EE;
-            --background-dark: #1E133E;
-            --secondary-dark: #2C2541;
-            --text-color: #E0E0E0;
-            --hover-color: #4A3A6D;
-        }
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--background-dark);
-            color: var(--text-color);
-            line-height: 1.6;
-            padding: 20px;
-        }
-        .container {
-            background-color: var(--secondary-dark);
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            padding: 30px;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        h1 {
-            color: var(--primary-color);
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        .back-link {
-            display: block;
-            text-align: center;
-            color: var(--primary-color);
-            text-decoration: none;
-            margin-bottom: 20px;
-            font-weight: 600;
-        }
-        textarea {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #4A3A6D;
-            border-radius: 6px;
-            min-height: 300px;
-            font-family: 'Courier New', Courier, monospace;
-            background-color: var(--background-dark);
-            color: var(--text-color);
-        }
-        .save-button {
-            display: block;
-            width: 100%;
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-top: 15px;
-            transition: all 0.3s ease;
-        }
-        .save-button:hover {
-            background-color: #6A5ACD;
-            transform: scale(1.02);
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Edit .env</h1>
-        <a href="/" class="back-link">Go Back</a>
-        <form method="post">
+{% extends "base.html" %}
+{% block title %}Environment{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Environment (.env)</h1>
+</div>
+
+<div class="card">
+    <form method="post" onsubmit="return confirm('Save changes to .env? The bot must be restarted for changes to take effect.');">
+        <div class="field">
             <textarea name="env_content" spellcheck="false">{{ env_content }}</textarea>
-            <button type="submit" class="save-button">Save Changes</button>
-        </form>
-    </div>
-</body>
-</html>
+        </div>
+        <button type="submit" class="btn">Save changes</button>
+    </form>
+    <p class="card-hint">Changes are written to disk immediately but only apply after the bot is restarted.</p>
+</div>
+{% endblock %}
