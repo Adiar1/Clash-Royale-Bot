@@ -399,6 +399,7 @@ class MiscCog(commands.Cog):
 - `/members [clan_tag]` - View current clan members
 - `/player [player_tag]` - View detailed player stats
 - `/clan [clan_tag]` - List clan members and join dates
+- `/viewlinks [clan_tag]` - List clan members with their linked Discord accounts
 - `/rankings [tourny_tag]` - List tournament rankings
 - `/stats [player_tag] [from_war] [to_war]` - Calculate player stats over war range
             """,
@@ -407,8 +408,8 @@ class MiscCog(commands.Cog):
         embed.add_field(
             name="🔗 Account Linking",
             value="""
-- `/link [player_tag] [alt_account]` - Link your account (non server specific)
-- `/forcelink [@user] [player_tag] [alt_account]` - Force link an account (non server specific)
+- `/link [player_tag] [alt_account] [deckai_id]` - Link, unlink, or update your account (non server specific)
+- `/forcelink [@user] [player_tag] [alt_account] [deckai_id]` - Force link an account (non server specific)
 - `/profile [@user]` - View linked accounts
 - `/wipelinks [@user]` - Remove linked accounts
             """,
@@ -417,9 +418,9 @@ class MiscCog(commands.Cog):
         embed.add_field(
             name="⚙️ Server Management",
             value="""
-- `/nicklink [clan_tag] [nickname]` - Link clan tag to nickname (server specific)
+- `/nicklink [clan_tag] [nickname]` - Link clan tag to nickname, or leave nickname empty to delete it (server specific)
 - `/viewnicks` - View clan nicknames in this server
-- `/reminders [clan_tag]` - Set up automated attack reminders sent on war days (server specific)
+- `/reminders [clan_tag]` - Set up or edit automated attack reminders sent on war days (server specific)
 - `/editperms` - Edit privileged roles (server specific)
 - `/viewperms` - View privileged roles
 - `/editmemberroles` - Edit roles for clan roles (server specific)
@@ -430,8 +431,9 @@ class MiscCog(commands.Cog):
         embed.add_field(
             name="📊 Advanced Features",
             value="""
-- `/whotokick [clan_tag] [n]` - Get recommendations for kicking members (n is by default 5 but can be from 1 to 24)
-- `/whotopromote [clan_tag] [n]` - Get recommendations for promoting members (n is by default 5 but can be from 1 to 24)
+- `/whotokick [clan_tag] [n] [exclude_leadership]` - Get recommendations for kicking members (n is by default 5 but can be from 1 to 24)
+- `/whotopromote [clan_tag] [n] [exclude_leadership]` - Get recommendations for promoting members (n is by default 5 but can be from 1 to 24)
+- `/spy_ai [opponent_player_tag] [@someone_else]` - Scout an opponent's recent clan war decks via DeckAI (requires a linked DeckAI ID)
             """,
             inline=False,
         )
@@ -450,6 +452,7 @@ class MiscCog(commands.Cog):
 - Hashtags (#) are optional in clan or player tags
 - Tags are not case-sensitive
 - Use clan nicknames instead of tags for convenience
+- Player commands also accept a Discord @mention in place of a tag (uses their linked account)
 - Download CSV files for detailed data analysis
 - {FAME_EMOJI} Fame earned | {MULTIDECK_EMOJI} Decks used
 - {FORMER_MEMBER_EMOJI} Former members | {NEW_MEMBER_EMOJI} New members (joined after last war ended)
