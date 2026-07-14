@@ -76,6 +76,12 @@ python control_panel.py
 It listens on port 5000 by default (override with `PORT`) and requires
 `FLASK_SECRET_KEY` and `ADMIN_PASSWORD` to be set in `.env`.
 
+For a production host, run the bot and panel as systemd services so they start
+on boot and restart on crash — see [`linode/DEPLOY.md`](linode/DEPLOY.md). When
+`BOT_SERVICE` is set in `.env` (e.g. `BOT_SERVICE=crbot.service`), the panel's
+start/stop toggle drives that systemd service instead of spawning the bot as a
+child process, which keeps the bot's lifecycle clean across panel restarts.
+
 ## Project Structure
 
 ```
@@ -88,7 +94,7 @@ cogs/              slash commands grouped by domain (war, clan, links, admin, mi
 services/          all external HTTP calls (Clash Royale API, DeckAI) + scoring math
 db/                aiosqlite schema/migration + repository with every query
 ui/                shared embeds, emoji constants, and reusable views
-linode/            templates and static assets for the control panel
+linode/            control panel templates/static, systemd unit files, DEPLOY.md
 tests/             pytest suite (repository, migration, war-log math, HTTP client)
 ```
 

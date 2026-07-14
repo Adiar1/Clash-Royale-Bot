@@ -53,7 +53,43 @@ app = Flask(__name__, template_folder=str(TEMPLATES_DIR),
             static_folder=str(STATIC_DIR), static_url_path="/static")
 app.secret_key = SECRET_KEY
 
-BOT_PROCESS = None
+# When BOT_SERVICE is set (e.g. "crbot.service"), the panel manages the bot
+# through systemd instead of spawning it as a child process. That gives the bot
+# its own lifecycle (auto-restart, start-on-boot) and stops a panel restart from
+# orphaning bot processes. When unset, the panel falls back to the original
+# subprocess behavior (handy for local/dev runs without systemd).
+BOT_SERVICE = os.getenv("BOT_SERVICE")
+BOT_PROCESS = None  # only used in subprocess (non-systemd) mode
+
+
+def _systemctl(*args):
+    return subprocess.run(["systemctl", *args], capture_output=True, text=True)
+
+
+def bot_is_running() -> bool:
+    if BOT_SERVICE:
+        return _systemctl("is-active", "--quiet", BOT_SERVICE).returncode == 0
+    return BOT_PROCESS is not None
+
+
+def _spawn_bot():
+    """Start the bot as a child process (subprocess mode)."""
+    global BOT_PROCESS
+    python = sys.executable or "python3"
+    BOT_PROCESS = subprocess.Popen([python, str(BOT_SCRIPT)], cwd=str(BOT_DIR))
+
+
+def _terminate_bot():
+    """Stop the child-process bot (subprocess mode)."""
+    global BOT_PROCESS
+    if BOT_PROCESS is not None:
+        BOT_PROCESS.terminate()
+        try:
+            BOT_PROCESS.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            BOT_PROCESS.kill()
+            BOT_PROCESS.wait()
+        BOT_PROCESS = None
 
 
 # ---------- Auth ----------
@@ -90,17 +126,22 @@ def logout():
 @app.route('/')
 @login_required
 def index():
-    return render_template('index.html', bot_running=(BOT_PROCESS is not None))
+    return render_template('index.html', bot_running=bot_is_running())
 
 
 # ---------- Bot control ----------
 @app.route('/start', methods=['POST'])
 @login_required
 def start_bot():
-    global BOT_PROCESS
+    if BOT_SERVICE:
+        result = _systemctl("start", BOT_SERVICE)
+        if result.returncode == 0:
+            flash('Bot started.', 'success')
+        else:
+            flash(f"Failed to start bot: {(result.stderr or result.stdout).strip()}", 'error')
+        return redirect(url_for('index'))
     if BOT_PROCESS is None:
-        python = sys.executable or "python3"
-        BOT_PROCESS = subprocess.Popen([python, str(BOT_SCRIPT)], cwd=str(BOT_DIR))
+        _spawn_bot()
         flash('Bot started.', 'success')
     else:
         flash('Bot is already running.', 'info')
@@ -110,15 +151,15 @@ def start_bot():
 @app.route('/stop', methods=['POST'])
 @login_required
 def stop_bot():
-    global BOT_PROCESS
+    if BOT_SERVICE:
+        result = _systemctl("stop", BOT_SERVICE)
+        if result.returncode == 0:
+            flash('Bot stopped.', 'success')
+        else:
+            flash(f"Failed to stop bot: {(result.stderr or result.stdout).strip()}", 'error')
+        return redirect(url_for('index'))
     if BOT_PROCESS is not None:
-        BOT_PROCESS.terminate()
-        try:
-            BOT_PROCESS.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            BOT_PROCESS.kill()
-            BOT_PROCESS.wait()
-        BOT_PROCESS = None
+        _terminate_bot()
         flash('Bot stopped.', 'success')
     else:
         flash('Bot is not running.', 'info')
@@ -244,18 +285,12 @@ def update_and_restart():
         if stashed:
             subprocess.run(["git", "-C", str(BOT_DIR), "stash", "pop"], check=False)
 
-        # Stop the bot if running
-        if BOT_PROCESS is not None:
-            BOT_PROCESS.terminate()
-            try:
-                BOT_PROCESS.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                BOT_PROCESS.kill()
-                BOT_PROCESS.wait()
-
-        # Start the bot with new code
-        python = sys.executable or "python3"
-        BOT_PROCESS = subprocess.Popen([python, str(BOT_SCRIPT)], cwd=str(BOT_DIR))
+        # Restart the bot with the new code
+        if BOT_SERVICE:
+            _systemctl("restart", BOT_SERVICE)
+        else:
+            _terminate_bot()
+            _spawn_bot()
 
         # Check if anything was updated
         if "Already up to date" in pull_result.stdout or "Already up-to-date" in pull_result.stdout:
