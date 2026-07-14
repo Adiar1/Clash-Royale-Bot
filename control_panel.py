@@ -44,8 +44,13 @@ SECRET_KEY = os.getenv("FLASK_SECRET_KEY") or os.getenv("SECRET_KEY")
 if not SECRET_KEY:
     raise RuntimeError("FLASK_SECRET_KEY must be set to run the control panel.")
 
+# Always register the static folder (even if it isn't present at startup).
+# Passing None here leaves the 'static' endpoint unregistered, and base.html's
+# `url_for('static', ...)` then raises BuildError on EVERY page — which is what
+# broke the Files and Database views. With the folder always set, url_for works;
+# a missing stylesheet simply 404s and the page renders unstyled but functional.
 app = Flask(__name__, template_folder=str(TEMPLATES_DIR),
-            static_folder=str(STATIC_DIR) if STATIC_DIR.exists() else None)
+            static_folder=str(STATIC_DIR), static_url_path="/static")
 app.secret_key = SECRET_KEY
 
 BOT_PROCESS = None
