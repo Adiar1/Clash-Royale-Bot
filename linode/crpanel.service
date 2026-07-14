@@ -1,0 +1,15 @@
+[Unit]
+Description=Clash Royale Bot web control panel
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/Clash-Royale-Bot
+ExecStart=/usr/bin/python3 /opt/Clash-Royale-Bot/control_panel.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
