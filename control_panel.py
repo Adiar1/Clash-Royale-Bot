@@ -23,11 +23,21 @@ HERE = Path(__file__).resolve().parent  # folder with this file
 BOT_DIR = find_repo_root(HERE)  # repo root: /opt/Clash-Royale-Bot
 BOT_SCRIPT = BOT_DIR / "main.py"
 ENV_FILE = BOT_DIR / ".env"
-DB_FILE = BOT_DIR / "database.db"
 TEMPLATES_DIR = BOT_DIR / "linode" / "templates"
 STATIC_DIR = BOT_DIR / "linode" / "static"  # optional; use if you have one
 
 load_dotenv(ENV_FILE if ENV_FILE.exists() else None)
+
+
+def db_path() -> Path:
+    """Where the bot keeps its SQLite file.
+
+    Mirrors the bot's config (DATABASE_PATH, default "database.db"), resolved
+    relative to the repo root so the panel reads the *same* file the bot writes.
+    """
+    raw = os.getenv("DATABASE_PATH", "database.db")
+    p = Path(raw)
+    return p if p.is_absolute() else (BOT_DIR / p)
 
 # Stable secret key (don't regenerate on every restart or you'll get logged out)
 SECRET_KEY = os.getenv("FLASK_SECRET_KEY") or os.getenv("SECRET_KEY")
@@ -281,12 +291,27 @@ def format_size(num_bytes: int) -> str:
 def file_viewer():
     def list_items(directory: Path):
         items = []
-        for item in sorted(directory.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower())):
+        try:
+            entries = sorted(directory.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower()))
+        except OSError as e:
+            # e.g. the panel process lacks permission to read this directory
+            flash(f"Cannot list this directory: {e}", 'error')
+            return items
+        for item in entries:
+            is_dir = item.is_dir()  # returns False for broken symlinks, never raises
+            size = None
+            if not is_dir:
+                # A single unreadable entry (broken symlink, permission denied,
+                # socket) must not take down the whole listing.
+                try:
+                    size = format_size(item.stat().st_size)
+                except OSError:
+                    size = "—"
             items.append({
                 "name": item.name,
                 "path": str(item.relative_to(BOT_DIR)),  # relative path
-                "is_dir": item.is_dir(),
-                "size": None if item.is_dir() else format_size(item.stat().st_size),
+                "is_dir": is_dir,
+                "size": size,
             })
         return items
 
@@ -323,8 +348,18 @@ def edit_env():
 @app.route('/database')
 @login_required
 def view_database():
+    db_file = db_path()
+    if not db_file.exists():
+        flash(
+            f"No database file at {db_file}. If the bot uses a custom DATABASE_PATH, "
+            "set the same value in the panel's environment.",
+            'error',
+        )
+        return render_template('database.html', database_data=[])
     try:
-        conn = sqlite3.connect(str(DB_FILE))
+        # Read-only: a wrong/unreadable path fails loudly instead of silently
+        # creating an empty database that looks like "no tables".
+        conn = sqlite3.connect(f"file:{db_file}?mode=ro", uri=True)
         cursor = conn.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
         tables = [row[0] for row in cursor.fetchall()]
@@ -338,8 +373,8 @@ def view_database():
         conn.close()
         return render_template('database.html', database_data=database_data)
     except Exception as e:
-        flash(f"Error reading database: {e}", 'error')
-        return redirect(url_for('index'))
+        flash(f"Error reading database at {db_file}: {e}", 'error')
+        return render_template('database.html', database_data=[])
 
 
 if __name__ == '__main__':
