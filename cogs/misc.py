@@ -8,6 +8,7 @@ from discord.ui import Select, View
 from cogs.resolvers import resolve_player_tag
 from errors import NoDeckAILink, NotLinked
 from services.clash_royale import normalize_tag, race_participants
+from services.deck_ai import DeckRecommendation, recommend_deck, split_available_decks
 from ui.embeds import excel_like_sort_key, make_embed
 from ui.emojis import (
     CC_EMOJI,
@@ -243,38 +244,66 @@ def format_spy_report(war_data: dict | None) -> str:
         return "❌ **No data found** - The opponent might not have any recent clan war activity"
 
     opponent_decks = war_data.get("opponentDecks", [])
+    player_decks = war_data.get("playerDecks", [])
     if not opponent_decks:
         return "🕵️ **Clan War Spy Report**\n\n❌ **No opponent deck data found**"
 
-    lines = ["🕵️ **Clan War Spy Report**", "", f"📊 **Found {len(opponent_decks)} deck(s)**", ""]
-    for idx, deck in enumerate(opponent_decks, 1):
-        if not isinstance(deck, dict):
-            lines.append(f"⚠️ **Deck {idx}:** Invalid data format")
-            continue
+    available, used_today = split_available_decks(opponent_decks)
 
-        cards = deck.get("deck", [])
+    lines = ["🕵️ **Clan War Spy Report**", ""]
+
+    if player_decks:
+        lines.append("**Your Decks Today**")
+        for idx, deck in enumerate(player_decks, 1):
+            lines.append(f"**Your Deck {idx}:** {_format_deck_cards(deck)}")
+        lines.append("")
+
+    availability_note = f" ({len(used_today)} already used today)" if used_today else ""
+    lines.append(f"📊 **Opponent has {len(available)} deck(s) available for their next duel**{availability_note}")
+    lines.append("")
+
+    for idx, deck in enumerate(available, 1):
+        if not isinstance(deck, dict):
+            lines.append(f"⚠️ **Opponent Deck {idx}:** Invalid data format")
+            continue
         lines.extend([
-            f"🃏 **Deck {idx}:**",
-            f"   **Game Mode:** {deck.get('gameMode', 'Unknown Mode')}",
-            f"   **Date:** {_format_spy_date(deck.get('date', ''))}",
-            f"   **Win Rates:** {_format_win_rates(deck.get('winRates', []))}",
+            f"🃏 **Opponent Deck {idx}:** {_format_deck_cards(deck.get('deck', []))}",
+            f"   **Game Mode:** {deck.get('gameMode', 'Unknown Mode')} | "
+            f"**Last Used:** {_format_spy_date(deck.get('date', ''))}",
+            f"   **Win Rate vs Your Decks:** {_format_win_rates_labeled(deck.get('winRates', []))}",
             "",
         ])
 
-        if cards:
-            lines.append("   **Cards:**")
-            lines.append(f"      {_format_card_list(cards[:8])}")
+    if player_decks and available:
+        recommendation = recommend_deck(player_decks, available)
+        if recommendation is not None:
+            lines.append(
+                f"💡 **Suggested opening deck:** Your Deck {recommendation.player_deck_index + 1} "
+                f"(avg {recommendation.average_win_rate * 100:.1f}% across their available decks)"
+            )
             lines.append("")
-            if len(cards) >= 9 and isinstance(cards[8], dict):
-                tower = cards[8]
-                lines.append(f"   **Tower:** {tower.get('name', 'Unknown Tower')} (Lvl {tower.get('level', '?')})")
-                lines.append("")
-        else:
-            lines.extend(["   **Cards:** No card data available", ""])
 
-        lines.extend(["─" * 50, ""])
+    if used_today:
+        lines.append("🔒 **Already used today (unavailable for a new duel):**")
+        for deck in used_today:
+            if not isinstance(deck, dict):
+                continue
+            lines.append(
+                f"   {_format_deck_cards(deck.get('deck', []))} — used {_format_spy_date(deck.get('date', ''))}"
+            )
+        lines.append("")
 
     return "\n".join(lines)
+
+
+def _format_deck_cards(cards: list) -> str:
+    if not cards:
+        return "No card data available"
+    body = _format_card_list(cards[:8])
+    if len(cards) >= 9 and isinstance(cards[8], dict):
+        tower = cards[8]
+        body += f" (Tower: {tower.get('name', 'Unknown Tower')} Lvl {tower.get('level', '?')})"
+    return body
 
 
 def _format_card_list(cards: list) -> str:
@@ -287,14 +316,16 @@ def _format_card_list(cards: list) -> str:
     return ", ".join(parts) if parts else "No cards found"
 
 
-def _format_win_rates(win_rates: list) -> str:
+def _format_win_rates_labeled(win_rates: list) -> str:
     if not win_rates or not isinstance(win_rates, list):
         return "No win rate data"
-    try:
-        formatted = [f"{float(rate) * 100:.1f}%" for rate in win_rates if rate is not None]
-        return " | ".join(formatted) if formatted else "No win rate data"
-    except (ValueError, TypeError):
-        return "Invalid win rate data"
+    parts = []
+    for idx, rate in enumerate(win_rates, 1):
+        try:
+            parts.append(f"Deck {idx}: {float(rate) * 100:.1f}%")
+        except (ValueError, TypeError):
+            continue
+    return " | ".join(parts) if parts else "No win rate data"
 
 
 def _format_spy_date(date_str: str) -> str:
@@ -323,6 +354,113 @@ def chunk_message(text: str, limit: int = 1990) -> list[str]:
     return chunks
 
 
+def _deck_option_label(prefix: str, cards: list, max_names: int = 3) -> str:
+    names = [c.get("name", "?") for c in cards[:8] if isinstance(c, dict)] if cards else []
+    shown = ", ".join(names[:max_names])
+    extra = len(names) - max_names
+    summary = f"{shown} +{extra} more" if extra > 0 else shown
+    return f"{prefix}: {summary}"[:100]
+
+
+class _DeckPlayedSelect(Select):
+    """Records which deck (opponent's or the user's) was played in the current match."""
+
+    def __init__(self, placeholder: str, options: list[SelectOption], kind: str):
+        super().__init__(placeholder=placeholder, options=options, min_values=1, max_values=1)
+        self.kind = kind
+
+    async def callback(self, interaction: Interaction):
+        view: SpyDuelView = self.view
+        if self.kind == "opponent":
+            view.opponent_choice = int(self.values[0])
+        else:
+            view.player_choice = int(self.values[0])
+        await view.maybe_advance(interaction)
+
+
+class SpyDuelView(View):
+    """Interactive duel tracker: after each match, records which deck each side played
+    and recommends the player's best remaining deck for the next one.
+
+    A duel is best-of-3, so at most 2 rounds of "what got played" are needed:
+    match 1's result informs the match-2 pick, and match 2's result informs match 3's.
+    """
+
+    ROUNDS = 2
+
+    def __init__(self, author_id: int, player_decks: list, available_opponent_decks: list[dict]):
+        super().__init__(timeout=1800)
+        self.author_id = author_id
+        self.player_decks = player_decks
+        # (original index, deck) so numbering stays stable across rounds as decks are removed.
+        self.remaining_opponent_decks: list[tuple[int, dict]] = list(enumerate(available_opponent_decks))
+        self.remaining_player_indices = list(range(len(player_decks)))
+        self.rounds_completed = 0
+        self.opponent_choice: int | None = None
+        self.player_choice: int | None = None
+        self._build_round()
+
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        return interaction.user.id == self.author_id
+
+    def _build_round(self):
+        self.clear_items()
+        match_n = self.rounds_completed + 1
+        opponent_options = [
+            SelectOption(
+                label=_deck_option_label(f"Opponent Deck {original_i + 1}", deck.get("deck", [])), value=str(pos)
+            )
+            for pos, (original_i, deck) in enumerate(self.remaining_opponent_decks)
+        ]
+        player_options = [
+            SelectOption(label=_deck_option_label(f"Your Deck {i + 1}", self.player_decks[i]), value=str(i))
+            for i in self.remaining_player_indices
+        ]
+        self.add_item(_DeckPlayedSelect(f"Which deck did THEY play in Match {match_n}?", opponent_options, "opponent"))
+        self.add_item(_DeckPlayedSelect(f"Which deck did YOU play in Match {match_n}?", player_options, "player"))
+
+    async def maybe_advance(self, interaction: Interaction):
+        if self.opponent_choice is None or self.player_choice is None:
+            await interaction.response.defer()
+            return
+
+        match_n = self.rounds_completed + 1
+        played_player_deck = self.player_choice
+        self.remaining_opponent_decks.pop(self.opponent_choice)
+        self.remaining_player_indices.remove(played_player_deck)
+        self.rounds_completed += 1
+        self.opponent_choice = self.player_choice = None
+
+        lines = [f"✅ **Match {match_n} recorded** (you played Your Deck {played_player_deck + 1})."]
+
+        has_data_left = bool(self.remaining_opponent_decks and self.remaining_player_indices)
+        if has_data_left:
+            excluded = frozenset(range(len(self.player_decks))) - set(self.remaining_player_indices)
+            remaining_decks_only = [deck for _, deck in self.remaining_opponent_decks]
+            recommendation: DeckRecommendation | None = recommend_deck(
+                self.player_decks, remaining_decks_only, excluded
+            )
+            if recommendation is not None:
+                lines.append(
+                    f"💡 **Suggested pick for Match {match_n + 1}:** Your Deck {recommendation.player_deck_index + 1} "
+                    f"(avg {recommendation.average_win_rate * 100:.1f}% against their remaining "
+                    f"{len(self.remaining_opponent_decks)} deck(s))"
+                )
+            else:
+                lines.append("⚠️ Not enough data to recommend a next deck.")
+        else:
+            lines.append("🏁 No more opponent deck data to predict against.")
+
+        can_continue = self.rounds_completed < self.ROUNDS and has_data_left
+        if can_continue:
+            self._build_round()
+        else:
+            self.stop()
+            self.clear_items()
+
+        await interaction.response.edit_message(content="\n".join(lines), view=self)
+
+
 class MiscCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -343,10 +481,13 @@ class MiscCog(commands.Cog):
         embed = view.render(name, players)
         await interaction.followup.send(embed=embed, view=view)
 
-    @app_commands.command(name="spy_ai", description="Get detailed info on opponent's clan war decks")
+    @app_commands.command(
+        name="spy_ai",
+        description="Scout an opponent's available war-duel decks and your win rate against each",
+    )
     @app_commands.describe(
-        opponent_player_tag="Enter the opponent's player tag",
-        someone_else="Optionally mention another user whose DeckAI account to use",
+        opponent_player_tag="The player tag of who you're dueling",
+        someone_else="Optionally mention the user actually dueling them, if not you",
     )
     async def spy_ai(self, interaction: Interaction, opponent_player_tag: str, someone_else: User | None = None):
         await interaction.response.defer()
@@ -376,6 +517,17 @@ class MiscCog(commands.Cog):
         report = format_spy_report(war_data)
         for chunk in chunk_message(report):
             await interaction.followup.send(chunk)
+
+        if war_data:
+            player_decks = war_data.get("playerDecks", [])
+            available, _ = split_available_decks(war_data.get("opponentDecks", []))
+            if player_decks and available:
+                view = SpyDuelView(interaction.user.id, player_decks, available)
+                await interaction.followup.send(
+                    "🎮 **Track the duel** — after each match, log who played what "
+                    "and I'll suggest your next pick.",
+                    view=view,
+                )
 
     @app_commands.command(name="info", description="Display information about the bot")
     async def info(self, interaction: Interaction):
@@ -432,7 +584,7 @@ class MiscCog(commands.Cog):
             value="""
 - `/whotokick [clan_tag] [n] [exclude_leadership]` - Get recommendations for kicking members (n is by default 5 but can be from 1 to 24)
 - `/whotopromote [clan_tag] [n] [exclude_leadership]` - Get recommendations for promoting members (n is by default 5 but can be from 1 to 24)
-- `/spy_ai [opponent_player_tag] [@someone_else]` - Scout an opponent's recent clan war decks via DeckAI (requires a linked DeckAI ID)
+- `/spy_ai [opponent_player_tag] [@someone_else]` - Scout an opponent's available war-duel decks via DeckAI, see your win rate against each, and get live pick suggestions as the duel plays out (requires a linked DeckAI ID)
             """,
             inline=False,
         )

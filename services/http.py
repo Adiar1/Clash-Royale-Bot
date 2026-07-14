@@ -10,7 +10,15 @@ logger = logging.getLogger(__name__)
 
 
 class NotFoundError(Exception):
-    """Raised on HTTP 404. Clients translate this into a typed BotError or None."""
+    """Raised on HTTP 404. Clients translate this into a typed BotError or None.
+
+    ``body`` is the response text: some APIs (DeckAI) put the actual reason
+    there, e.g. "Clan war decks not set" vs "No matching user id".
+    """
+
+    def __init__(self, url: str, body: str = ""):
+        super().__init__(url)
+        self.body = body
 
 
 class BaseAPIClient:
@@ -56,7 +64,7 @@ class BaseAPIClient:
 
                 body = await response.text()
                 if response.status == 404:
-                    raise NotFoundError(url)
+                    raise NotFoundError(url, body)
                 if response.status == 429:
                     logger.warning("Rate limited by %s: %s", url, body[:200])
                     raise RateLimited()
