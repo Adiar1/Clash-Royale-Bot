@@ -10,7 +10,7 @@ from cogs.checks import is_privileged, user_is_privileged
 from db.repository import MAX_LINKED_TAGS
 from errors import BotError, ClanNotFound
 from services.clash_royale import normalize_tag
-from ui.embeds import EMBED_COLOR, make_embed
+from ui.embeds import EMBED_COLOR, MAX_DESCRIPTION, make_embed
 from ui.emojis import TROPHYROAD_EMOJI
 from ui.views import ConfirmView
 
@@ -496,15 +496,40 @@ class LinksCog(commands.Cog):
             return
 
         links.sort(key=lambda link: link[1].lower())
-        embed = make_embed("Clan Nicknames",
-                           "Here are all the clan nicknames linked in this server, sorted alphabetically:")
-        for clan_tag, nickname in links:
+
+        # Fetch clan names concurrently; a failed lookup falls back to the tag.
+        async def _clan_name(clan_tag: str) -> str | None:
             try:
                 clan = await self.bot.cr.clan(clan_tag)
-                embed.add_field(name=f"#{clan_tag} - {clan['name']}", value=f"Nickname: {nickname}", inline=False)
+                return clan.get("name")
             except Exception:
-                embed.add_field(name=f"#{clan_tag}", value=f"Nickname: {nickname}", inline=False)
-        await interaction.followup.send(embed=embed)
+                return None
+
+        names = await asyncio.gather(*(_clan_name(tag) for tag, _ in links))
+
+        # Render one line per clan into the embed description (up to 4096 chars),
+        # rather than one field per clan (Discord caps embeds at 25 fields).
+        lines = ["Here are all the clan nicknames linked in this server, sorted alphabetically:"]
+        for (clan_tag, nickname), name in zip(links, names, strict=True):
+            label = f"{name} (#{clan_tag})" if name else f"#{clan_tag}"
+            lines.append(f"**{nickname}** — {label}")
+
+        # Split into multiple messages only if the text exceeds one embed's limit.
+        pages: list[str] = []
+        current = ""
+        for line in lines:
+            candidate = f"{current}\n{line}" if current else line
+            if len(candidate) > MAX_DESCRIPTION:
+                pages.append(current)
+                current = line
+            else:
+                current = candidate
+        if current:
+            pages.append(current)
+
+        for index, page in enumerate(pages):
+            title = "Clan Nicknames" if index == 0 else "Clan Nicknames (continued)"
+            await interaction.followup.send(embed=make_embed(title, page))
 
 
 class ProfileView(View):
