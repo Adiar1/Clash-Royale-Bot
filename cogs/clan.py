@@ -421,13 +421,13 @@ class MembersTableView(View):
     def sort_rows(self, rows: list[dict]) -> list[dict]:
         order = self.listing_order
         if order.startswith("tag"):
-            rows = sorted(rows, key=lambda r: r["tag"], reverse=order.endswith("desc"))
+            rows = sorted(rows, key=lambda r: r["tag"].lower(), reverse=order.endswith("desc"))
         elif order.startswith("name"):
-            rows = sorted(rows, key=lambda r: r["name"], reverse=order.endswith("desc"))
+            rows = sorted(rows, key=lambda r: r["name"].lower(), reverse=order.endswith("desc"))
         elif order == "role_desc":
-            rows = sorted(rows, key=lambda r: (ROLE_ORDER.get(r["role"], 5), not r["is_new"], r["name"]), reverse=True)
+            rows = sorted(rows, key=lambda r: (ROLE_ORDER.get(r["role"], 5), not r["is_new"], r["name"].lower()), reverse=True)
         elif order == "role_asc":
-            rows = sorted(rows, key=lambda r: (not r["is_new"], ROLE_ORDER.get(r["role"], 5), r["name"]))
+            rows = sorted(rows, key=lambda r: (not r["is_new"], ROLE_ORDER.get(r["role"], 5), r["name"].lower()))
         return rows
 
     def build_embed(self, clan_name: str, rows: list[dict]) -> discord.Embed:
