@@ -24,6 +24,29 @@ CREATE TABLE IF NOT EXISTS clan_links (
     PRIMARY KEY (clan_tag, guild_id)
 );
 
+CREATE TABLE IF NOT EXISTS clan_needs (
+    clan_tag   TEXT NOT NULL,
+    guild_id   INTEGER NOT NULL,
+    needed     INTEGER NOT NULL DEFAULT 0,
+    manual     INTEGER NOT NULL DEFAULT 0,  -- 1 = a leader pinned this value; 0 = auto-tracked open slots
+    last_count INTEGER,                      -- member count at last poll (for change detection)
+    thread_id  INTEGER,                      -- the clan's recruiting thread, if created
+    updated_at TEXT,                         -- ISO8601 timestamp of the last change
+    PRIMARY KEY (clan_tag, guild_id)
+);
+
+CREATE TABLE IF NOT EXISTS clan_managers (
+    guild_id INTEGER NOT NULL,
+    clan_tag TEXT NOT NULL,
+    user_id  INTEGER NOT NULL,
+    PRIMARY KEY (guild_id, clan_tag, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS recruit_settings (
+    guild_id   INTEGER PRIMARY KEY,
+    channel_id INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS privileged_roles (
     guild_id INTEGER NOT NULL,
     role_id  INTEGER NOT NULL,
@@ -64,6 +87,7 @@ class Database:
         await self._migrate_legacy_privileged_roles()
         await self.conn.executescript(SCHEMA)
         await self._migrate_legacy_user_links()
+        await self._migrate_clan_needs_columns()
         await self.conn.commit()
         logger.info("Database ready at %s", self.path)
         return self.conn
@@ -103,6 +127,20 @@ class Database:
                         "INSERT OR IGNORE INTO privileged_roles (guild_id, role_id) VALUES (?, ?)",
                         (int(guild_id), int(role_id)),
                     )
+
+    async def _migrate_clan_needs_columns(self) -> None:
+        """The first version of clan_needs held only (clan_tag, guild_id, needed);
+        recruit tracking added more columns. Backfill them on older databases."""
+        if not await self._table_exists("clan_needs"):
+            return
+        for column, ddl in (
+            ("manual", "manual INTEGER NOT NULL DEFAULT 0"),
+            ("last_count", "last_count INTEGER"),
+            ("thread_id", "thread_id INTEGER"),
+            ("updated_at", "updated_at TEXT"),
+        ):
+            if not await self._table_has_column("clan_needs", column):
+                await self.conn.execute(f"ALTER TABLE clan_needs ADD COLUMN {ddl}")
 
     async def _migrate_legacy_user_links(self) -> None:
         """v1 stored comma-joined player_tags per user; v2 stores one row per tag."""

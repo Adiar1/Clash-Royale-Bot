@@ -580,6 +580,18 @@ class MiscCog(commands.Cog):
             inline=False,
         )
         embed.add_field(
+            name="🧲 Recruiting (privileged, server specific)",
+            value="""
+- `/viewneeds` - See which clans need recruits and how many, most-needed first
+- `/editneeds [tag] [number]` - Pin how many recruits a clan needs (0 to clear)
+- `/setrecruitchannel [channel]` - Pick the channel where per-clan recruiting threads are posted
+- `/setclanmanager [tag] [@user]` - Assign (or unassign) someone to manage a clan's recruiting
+- `/viewclanmanagers` - See who manages recruiting for each clan
+- I auto-track each managed clan's open slots from the API and ping the manager(s) in that clan's thread when someone leaves, so the number stays fresh without daily commands
+            """,
+            inline=False,
+        )
+        embed.add_field(
             name="📊 Advanced Features",
             value="""
 - `/whotokick [clan_tag] [n] [exclude_leadership]` - Get recommendations for kicking members (n is by default 5 but can be from 1 to 24)

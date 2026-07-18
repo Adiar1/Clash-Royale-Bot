@@ -58,6 +58,88 @@ async def test_clan_nicknames_case_insensitive(repo):
     assert await repo.delete_clan_nickname("CLAN99", 42) is False
 
 
+async def test_clan_needs(repo):
+    assert await repo.clan_needs("#clan1", 1) is None
+    assert await repo.clan_needs_for_guild(1) == []
+
+    await repo.set_clan_needs("#clan1", 1, 5)
+    await repo.set_clan_needs("clan2", 1, 3)
+    assert await repo.clan_needs("CLAN1", 1) == 5
+    assert await repo.clan_needs("clan1", 2) is None  # other guild
+
+    # Re-setting replaces the previous value
+    await repo.set_clan_needs("CLAN1", 1, 8)
+    assert await repo.clan_needs("CLAN1", 1) == 8
+
+    assert sorted(await repo.clan_needs_for_guild(1)) == [("CLAN1", 8), ("CLAN2", 3)]
+
+    # A zero need is not returned as an outstanding need
+    await repo.set_clan_needs("CLAN2", 1, 0)
+    assert await repo.clan_needs_for_guild(1) == [("CLAN1", 8)]
+
+    assert await repo.delete_clan_needs("CLAN1", 1) is True
+    assert await repo.delete_clan_needs("CLAN1", 1) is False
+    assert await repo.clan_needs("CLAN1", 1) is None
+    assert await repo.clan_needs_for_guild(1) == []
+
+
+async def test_clan_need_tracking(repo):
+    assert await repo.clan_need("CLAN1", 1) is None
+
+    # Manual pin records the manual flag; auto set clears it.
+    await repo.set_clan_needs("#clan1", 1, 4, manual=True)
+    need = await repo.clan_need("CLAN1", 1)
+    assert need.needed == 4 and need.manual is True
+    assert need.last_count is None and need.thread_id is None
+
+    await repo.set_clan_needs("CLAN1", 1, 2, manual=False)
+    need = await repo.clan_need("CLAN1", 1)
+    assert need.needed == 2 and need.manual is False
+
+    # Tracking fields update independently and don't clobber the need.
+    await repo.set_clan_last_count("CLAN1", 1, 47)
+    await repo.set_clan_thread("CLAN1", 1, 9999)
+    need = await repo.clan_need("CLAN1", 1)
+    assert need.needed == 2 and need.last_count == 47 and need.thread_id == 9999
+
+    assert await repo.clan_by_thread(9999) == (1, "CLAN1")
+    assert await repo.clan_by_thread(123) is None
+
+    # A count/thread update on a fresh clan creates the row with defaults.
+    await repo.set_clan_last_count("CLAN2", 1, 50)
+    fresh = await repo.clan_need("CLAN2", 1)
+    assert fresh.needed == 0 and fresh.manual is False and fresh.last_count == 50
+
+
+async def test_clan_managers(repo):
+    assert await repo.clan_managers(1, "CLAN1") == []
+    assert await repo.managed_clans(1) == []
+    assert await repo.all_managed_clans() == []
+
+    await repo.add_clan_manager(1, "#clan1", 100)
+    await repo.add_clan_manager(1, "CLAN1", 200)
+    await repo.add_clan_manager(1, "CLAN1", 100)  # duplicate ignored
+    await repo.add_clan_manager(1, "CLAN2", 300)
+    await repo.add_clan_manager(2, "CLAN1", 400)  # other guild
+
+    assert await repo.clan_managers(1, "clan1") == [100, 200]
+    assert sorted(await repo.managed_clans(1)) == ["CLAN1", "CLAN2"]
+    assert sorted(await repo.all_managed_clans()) == [(1, "CLAN1"), (1, "CLAN2"), (2, "CLAN1")]
+
+    assert await repo.remove_clan_manager(1, "CLAN1", 100) is True
+    assert await repo.remove_clan_manager(1, "CLAN1", 100) is False
+    assert await repo.clan_managers(1, "CLAN1") == [200]
+
+
+async def test_recruit_channel(repo):
+    assert await repo.recruit_channel(1) is None
+    await repo.set_recruit_channel(1, 555)
+    assert await repo.recruit_channel(1) == 555
+    await repo.set_recruit_channel(1, 777)  # replaces
+    assert await repo.recruit_channel(1) == 777
+    assert await repo.recruit_channel(2) is None
+
+
 async def test_privileged_roles(repo):
     assert await repo.privileged_role_ids(7) == []
     await repo.set_privileged_roles(7, [111, 222])
@@ -114,6 +196,31 @@ async def test_deckai_links(repo):
     assert await repo.deckai_id("xyz") == "deck-1"
     await repo.delete_deckai_id("XYZ")
     assert await repo.deckai_id("XYZ") is None
+
+
+async def test_clan_needs_column_migration(tmp_path):
+    """An early clan_needs table (only clan_tag/guild_id/needed) gains the new columns."""
+    path = str(tmp_path / "old_needs.db")
+    conn = sqlite3.connect(path)
+    conn.executescript("""
+        CREATE TABLE clan_needs (clan_tag TEXT NOT NULL, guild_id INTEGER NOT NULL,
+                                 needed INTEGER NOT NULL, PRIMARY KEY (clan_tag, guild_id));
+        INSERT INTO clan_needs VALUES ('CLAN1', 1, 6);
+    """)
+    conn.commit()
+    conn.close()
+
+    db = Database(path)
+    repo = Repository(await db.connect())
+
+    need = await repo.clan_need("CLAN1", 1)
+    assert need.needed == 6 and need.manual is False
+    assert need.last_count is None and need.thread_id is None
+
+    # New tracking columns are writable after the migration.
+    await repo.set_clan_thread("CLAN1", 1, 42)
+    assert await repo.clan_by_thread(42) == (1, "CLAN1")
+    await db.close()
 
 
 async def test_legacy_migration(tmp_path):

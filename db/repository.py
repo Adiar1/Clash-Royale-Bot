@@ -1,6 +1,7 @@
 """All database queries live here. Tags are stored normalized (no '#', uppercase)."""
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 import aiosqlite
 
@@ -11,6 +12,10 @@ MAX_LINKED_TAGS = 20
 MEMBER_ROLE_POSITIONS = ("member", "elder", "coleader")
 
 
+def _now_iso() -> str:
+    return datetime.now(UTC).isoformat()
+
+
 @dataclass(frozen=True)
 class Reminder:
     clan_tag: str  # normalized
@@ -18,6 +23,17 @@ class Reminder:
     channel_id: int
     timezone: str  # IANA name, e.g. "America/New_York"; used only to display times locally
     times: tuple[str, ...]  # "HH:MM" in UTC
+
+
+@dataclass(frozen=True)
+class ClanNeed:
+    """A clan's recruiting state in one guild."""
+    clan_tag: str  # normalized
+    guild_id: int
+    needed: int
+    manual: bool  # True = a leader pinned the number; False = auto-tracked open slots
+    last_count: int | None  # member count at the last poll
+    thread_id: int | None  # the clan's recruiting thread, if created
 
 
 class Repository:
@@ -136,6 +152,143 @@ class Repository:
             (int(guild_id),),
         )
         return [(row[0], row[1]) for row in await cursor.fetchall()]
+
+    # ---- clan recruitment needs ----
+
+    async def _ensure_clan_needs_row(self, clan_tag: str, guild_id: int) -> None:
+        # ``needed`` is given explicitly (not left to the column default) because the
+        # original clan_needs table declared it NOT NULL without a default; a partial
+        # insert there would raise before ON CONFLICT could ignore the duplicate.
+        await self._conn.execute(
+            "INSERT INTO clan_needs (clan_tag, guild_id, needed) VALUES (?, ?, 0) "
+            "ON CONFLICT (clan_tag, guild_id) DO NOTHING",
+            (normalize_tag(clan_tag), int(guild_id)),
+        )
+
+    async def clan_needs(self, clan_tag: str, guild_id: int) -> int | None:
+        cursor = await self._conn.execute(
+            "SELECT needed FROM clan_needs WHERE clan_tag = ? AND guild_id = ?",
+            (normalize_tag(clan_tag), int(guild_id)),
+        )
+        row = await cursor.fetchone()
+        return row[0] if row else None
+
+    async def clan_need(self, clan_tag: str, guild_id: int) -> ClanNeed | None:
+        cursor = await self._conn.execute(
+            "SELECT needed, manual, last_count, thread_id FROM clan_needs "
+            "WHERE clan_tag = ? AND guild_id = ?",
+            (normalize_tag(clan_tag), int(guild_id)),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return None
+        return ClanNeed(normalize_tag(clan_tag), int(guild_id), row[0], bool(row[1]), row[2], row[3])
+
+    async def set_clan_needs(self, clan_tag: str, guild_id: int, needed: int, manual: bool = True) -> None:
+        await self._ensure_clan_needs_row(clan_tag, guild_id)
+        await self._conn.execute(
+            "UPDATE clan_needs SET needed = ?, manual = ?, updated_at = ? "
+            "WHERE clan_tag = ? AND guild_id = ?",
+            (int(needed), int(manual), _now_iso(), normalize_tag(clan_tag), int(guild_id)),
+        )
+        await self._conn.commit()
+
+    async def set_clan_last_count(self, clan_tag: str, guild_id: int, last_count: int) -> None:
+        await self._ensure_clan_needs_row(clan_tag, guild_id)
+        await self._conn.execute(
+            "UPDATE clan_needs SET last_count = ? WHERE clan_tag = ? AND guild_id = ?",
+            (int(last_count), normalize_tag(clan_tag), int(guild_id)),
+        )
+        await self._conn.commit()
+
+    async def set_clan_thread(self, clan_tag: str, guild_id: int, thread_id: int) -> None:
+        await self._ensure_clan_needs_row(clan_tag, guild_id)
+        await self._conn.execute(
+            "UPDATE clan_needs SET thread_id = ? WHERE clan_tag = ? AND guild_id = ?",
+            (int(thread_id), normalize_tag(clan_tag), int(guild_id)),
+        )
+        await self._conn.commit()
+
+    async def clan_by_thread(self, thread_id: int) -> tuple[int, str] | None:
+        """(guild_id, clan_tag) owning a recruiting thread, or None."""
+        cursor = await self._conn.execute(
+            "SELECT guild_id, clan_tag FROM clan_needs WHERE thread_id = ?",
+            (int(thread_id),),
+        )
+        row = await cursor.fetchone()
+        return (row[0], row[1]) if row else None
+
+    async def delete_clan_needs(self, clan_tag: str, guild_id: int) -> bool:
+        cursor = await self._conn.execute(
+            "DELETE FROM clan_needs WHERE clan_tag = ? AND guild_id = ?",
+            (normalize_tag(clan_tag), int(guild_id)),
+        )
+        await self._conn.commit()
+        return cursor.rowcount > 0
+
+    async def clan_needs_for_guild(self, guild_id: int) -> list[tuple[str, int]]:
+        """[(clan_tag, needed), ...] for clans in a guild that need recruits."""
+        cursor = await self._conn.execute(
+            "SELECT clan_tag, needed FROM clan_needs WHERE guild_id = ? AND needed > 0",
+            (int(guild_id),),
+        )
+        return [(row[0], row[1]) for row in await cursor.fetchall()]
+
+    # ---- clan managers (who to prompt about recruiting) ----
+
+    async def add_clan_manager(self, guild_id: int, clan_tag: str, user_id: int) -> None:
+        await self._conn.execute(
+            "INSERT OR IGNORE INTO clan_managers (guild_id, clan_tag, user_id) VALUES (?, ?, ?)",
+            (int(guild_id), normalize_tag(clan_tag), int(user_id)),
+        )
+        await self._conn.commit()
+
+    async def remove_clan_manager(self, guild_id: int, clan_tag: str, user_id: int) -> bool:
+        cursor = await self._conn.execute(
+            "DELETE FROM clan_managers WHERE guild_id = ? AND clan_tag = ? AND user_id = ?",
+            (int(guild_id), normalize_tag(clan_tag), int(user_id)),
+        )
+        await self._conn.commit()
+        return cursor.rowcount > 0
+
+    async def clan_managers(self, guild_id: int, clan_tag: str) -> list[int]:
+        cursor = await self._conn.execute(
+            "SELECT user_id FROM clan_managers WHERE guild_id = ? AND clan_tag = ? ORDER BY user_id",
+            (int(guild_id), normalize_tag(clan_tag)),
+        )
+        return [row[0] for row in await cursor.fetchall()]
+
+    async def managed_clans(self, guild_id: int) -> list[str]:
+        """Distinct clan tags in a guild that have at least one manager."""
+        cursor = await self._conn.execute(
+            "SELECT DISTINCT clan_tag FROM clan_managers WHERE guild_id = ?",
+            (int(guild_id),),
+        )
+        return [row[0] for row in await cursor.fetchall()]
+
+    async def all_managed_clans(self) -> list[tuple[int, str]]:
+        """(guild_id, clan_tag) for every clan that has at least one manager."""
+        cursor = await self._conn.execute(
+            "SELECT DISTINCT guild_id, clan_tag FROM clan_managers"
+        )
+        return [(row[0], row[1]) for row in await cursor.fetchall()]
+
+    # ---- recruiting channel (parent for per-clan threads) ----
+
+    async def recruit_channel(self, guild_id: int) -> int | None:
+        cursor = await self._conn.execute(
+            "SELECT channel_id FROM recruit_settings WHERE guild_id = ?",
+            (int(guild_id),),
+        )
+        row = await cursor.fetchone()
+        return row[0] if row else None
+
+    async def set_recruit_channel(self, guild_id: int, channel_id: int) -> None:
+        await self._conn.execute(
+            "INSERT OR REPLACE INTO recruit_settings (guild_id, channel_id) VALUES (?, ?)",
+            (int(guild_id), int(channel_id)),
+        )
+        await self._conn.commit()
 
     # ---- reminders ----
 
