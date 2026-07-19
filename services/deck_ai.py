@@ -43,8 +43,8 @@ class DeckAIClient(BaseAPIClient):
         if "clan war decks not set" in reason:
             raise BotError(
                 "DeckAI says: **Clan war decks not set.**\n"
-                "This usually means the clan war decks aren't set up on the linked DeckAI account — "
-                "open the DeckAI app, set your 4 war decks, then try again.\n"
+                "This usually means the clan war decks aren't set up on the linked DeckAI account. "
+                "Open the DeckAI app, set your 4 war decks, then try again.\n"
                 "It can also mean DeckAI has no war-deck data for that opponent."
             )
         return None

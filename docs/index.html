@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Command reference for the Clan Info Discord bot: war tracking, member stats, account linking, reminders, and recruiting.">
-<title>Clash Royale Bot — Command Guide</title>
+<title>Clan Info Command Guide</title>
 <style>
   :root {
     --bg: #FBFBFD;
@@ -147,7 +147,7 @@
 
 <header class="site">
   <div class="wrap">
-    <p class="site-brand">Clash Royale Clan Info Bot</p>
+    <p class="site-brand">Clan Info Discord Bot</p>
     <h1>Command guide</h1>
     <p class="lede">Reference for every command in the clan-management bot: what it does, who can run it, and what to type. Covers war tracking, member stats, account linking, war-day reminders, and recruiting.</p>
     <p class="lede"><a href="https://discord.com/oauth2/authorize?client_id=1260102504377483286&permissions=8&integration_type=0&scope=bot" target="_blank" rel="noopener">Add the bot to your server</a></p>
@@ -175,16 +175,16 @@
 
     <section id="start" data-info>
       <h2>How the bot works</h2>
-      <p class="sec-intro">Every command is a Discord slash command — type <code>/</code> and pick it from the list. A few conventions apply everywhere.</p>
+      <p class="sec-intro">Every command is a Discord slash command: type <code>/</code> and pick it from the list. A few conventions apply everywhere.</p>
 
       <p><strong>Tags or nicknames.</strong> Anywhere a clan tag is asked for, you can type the real tag (the <code>#</code> is optional, case doesn't matter) or a short server nickname set with <code>/nicklink</code>. Anywhere a player tag is asked for, you can instead @mention a Discord user and the bot uses their linked account.</p>
       <p><strong>Permissions.</strong> Commands marked <span class="badge">privileged</span> are limited to roles chosen with <code>/editperms</code>. Until at least one privileged role is set, everyone can use every command.</p>
-      <p><strong>Per-server settings.</strong> Anything marked <span class="badge">per-server</span> — nicknames, reminders, roles, recruiting — is stored for that Discord server only. Account links are the exception: they're tied to your Discord account and work in any server.</p>
-      <p><strong>Interactive results.</strong> Commands marked <span class="badge">interactive</span> reply with menus or buttons — sorting dropdowns, a <strong>Download CSV</strong> button on tables, and so on.</p>
+      <p><strong>Per-server settings.</strong> Anything marked <span class="badge">per-server</span> (nicknames, reminders, roles, recruiting) is stored for that Discord server only. Account links are the exception: they're tied to your Discord account and work in any server.</p>
+      <p><strong>Interactive results.</strong> Commands marked <span class="badge">interactive</span> reply with menus or buttons: sorting dropdowns, a <strong>Download CSV</strong> button on tables, and so on.</p>
 
       <article class="cmd" id="info" data-search="info about bot help overview">
         <h3 class="sig"><span class="slash">/</span>info</h3>
-        <p>Posts a short overview of the bot inside Discord — what it does, quick tips, and a link back to this guide.</p>
+        <p>Posts a short overview of the bot inside Discord: what it does and a link back to this guide.</p>
       </article>
     </section>
 
@@ -258,7 +258,7 @@
 
       <article class="cmd" id="clan" data-search="clan members weeks joined average fame roster">
         <h3 class="sig"><span class="slash">/</span>clan <span class="arg">&lt;clan&gt;</span><span class="badges"><span class="badge">interactive</span></span></h3>
-        <p>Every member with how many weeks ago they joined and their average fame — a quick read on tenure and consistency.</p>
+        <p>Every member with how many weeks ago they joined and their average fame, a quick read on tenure and consistency.</p>
         <table class="params">
           <tr><td>clan</td><td>Required. Clan tag or a server nickname.</td></tr>
         </table>
@@ -277,7 +277,7 @@
 
       <article class="cmd" id="rankings" data-search="rankings tournament scores rank tourny">
         <h3 class="sig"><span class="slash">/</span>rankings <span class="arg">&lt;tournament&gt;</span><span class="badges"><span class="badge">interactive</span></span></h3>
-        <p>Tournament standings — every entrant's name, score, and rank.</p>
+        <p>Tournament standings: every entrant's name, score, and rank.</p>
         <table class="params">
           <tr><td>tournament</td><td>Required. The tournament tag.</td></tr>
         </table>
@@ -289,7 +289,7 @@
 
       <article class="cmd" id="whotokick" data-search="whotokick kick remove recommendations worst inactive">
         <h3 class="sig"><span class="slash">/</span>whotokick <span class="arg">&lt;clan&gt; [n] [exclude_leadership]</span><span class="badges"><span class="badge">interactive</span></span></h3>
-        <p>Suggests the lowest-scoring members as kick candidates — a starting point, not a verdict.</p>
+        <p>Suggests the lowest-scoring members as kick candidates, a starting point, not a verdict.</p>
         <table class="params">
           <tr><td>clan</td><td>Required. Clan tag or a server nickname.</td></tr>
           <tr><td>n</td><td>Optional. How many to list, 1–24 (default 5).</td></tr>
@@ -299,7 +299,7 @@
 
       <article class="cmd" id="whotopromote" data-search="whotopromote promote elder coleader recommendations best">
         <h3 class="sig"><span class="slash">/</span>whotopromote <span class="arg">&lt;clan&gt; [n] [exclude_leadership]</span><span class="badges"><span class="badge">interactive</span></span></h3>
-        <p>The flip side — the highest-scoring members who may have earned a promotion.</p>
+        <p>The flip side: the highest-scoring members who may have earned a promotion.</p>
         <table class="params">
           <tr><td>clan</td><td>Required. Clan tag or a server nickname.</td></tr>
           <tr><td>n</td><td>Optional. How many to list, 1–24 (default 5).</td></tr>
@@ -314,7 +314,7 @@
 
       <article class="cmd" id="link" data-search="link manager main tag alt deckai id add remove accounts">
         <h3 class="sig"><span class="slash">/</span>link <span class="arg">[user]</span><span class="badges"><span class="badge">interactive</span></span></h3>
-        <p>Opens the link manager — buttons to set your main tag, add alt accounts, attach DeckAI IDs, and remove accounts.</p>
+        <p>Opens the link manager: buttons to set your main tag, add alt accounts, attach DeckAI IDs, and remove accounts.</p>
         <table class="params">
           <tr><td>user</td><td>Optional. Manage someone else's links instead of your own (needs a privileged role).</td></tr>
         </table>
@@ -334,7 +334,7 @@
 
       <article class="cmd" id="wipelinks" data-search="wipelinks remove delete tags unlink">
         <h3 class="sig"><span class="slash">/</span>wipelinks <span class="arg">[user]</span><span class="badges"><span class="badge">privileged</span> <span class="badge">interactive</span></span></h3>
-        <p>Removes specific linked tags from an account via a select menu — useful for cleaning up someone else's stale links.</p>
+        <p>Removes specific linked tags from an account via a select menu, useful for cleaning up someone else's stale links.</p>
         <table class="params">
           <tr><td>user</td><td>Optional. Whose links to remove (defaults to you).</td></tr>
         </table>
@@ -391,7 +391,7 @@
         <p><strong>Setup walkthrough:</strong></p>
         <ol class="steps">
           <li><strong>Pick a channel.</strong><p>Where the reminders get posted. The bot needs View Channel and Send Messages there.</p></li>
-          <li><strong>Pick a timezone.</strong><p>Only used to show the reminder times in your local clock — the schedule itself is anchored to the war day.</p></li>
+          <li><strong>Pick a timezone.</strong><p>Only used to show the reminder times in your local clock; the schedule itself is anchored to the war day.</p></li>
           <li><strong>Pick one or more times.</strong><p>Choose hours within the war day (each runs 10:00 → 10:00 UTC). Reminders then fire automatically at those times on war days.</p></li>
         </ol>
         <ul class="notes">
@@ -406,20 +406,20 @@
 
       <p><strong>One-time setup</strong> <span class="badge">privileged</span></p>
       <ol class="steps">
-        <li><strong>Set a recruiting channel — <code>/setrecruitchannel #channel</code></strong><p>The bot opens one thread per clan here. It needs View Channel, Send Messages, Create Public Threads, and Send Messages in Threads in that channel (the command checks for you).</p></li>
-        <li><strong>Assign a manager per clan — <code>/setclanmanager &lt;clan&gt; @leader</code></strong><p>The person in charge of that clan. Assign more than one to share it; run it again on the same person to unassign.</p></li>
+        <li><strong>Set a recruiting channel: <code>/setrecruitchannel #channel</code></strong><p>The bot opens one thread per clan here. It needs View Channel, Send Messages, Create Public Threads, and Send Messages in Threads in that channel (the command checks for you).</p></li>
+        <li><strong>Assign a manager per clan: <code>/setclanmanager &lt;clan&gt; @leader</code></strong><p>The person in charge of that clan. Assign more than one to share it; run it again on the same person to unassign.</p></li>
       </ol>
       <p>That's the whole setup. From here the number stays current on its own; the commands below are only for checking in or overriding.</p>
 
       <div class="example">
         <p class="example-label">When a clan loses a member, the bot posts in that clan's thread and mentions its managers:</p>
         <div class="example-body">
-          <p><strong>1 member left Verdant</strong> — is the number below right?</p>
+          <p><strong>1 member left Highlanders</strong>. Is the number below right?</p>
           <p>Recruits needed: <strong>3</strong> &nbsp;·&nbsp; Members 47/50 &nbsp;·&nbsp; auto-tracked</p>
           <p class="muted">Buttons: <code>Use suggested</code> <code>+1</code> <code>−1</code> <code>Set exact…</code> <code>We're full</code></p>
         </div>
       </div>
-      <p><strong>Use suggested</strong> keeps the clan on auto-tracking. The other buttons pin a number the bot won't overwrite — though it'll still check in if the clan loses more members. When someone joins, the number drops on its own with no ping. Buttons keep working even after the bot restarts.</p>
+      <p><strong>Use suggested</strong> keeps the clan on auto-tracking. The other buttons pin a number the bot won't overwrite, though it'll still check in if the clan loses more members. When someone joins, the number drops on its own with no ping. Buttons keep working even after the bot restarts.</p>
 
       <article class="cmd" id="setrecruitchannel" data-search="setrecruitchannel recruiting channel thread setup">
         <h3 class="sig"><span class="slash">/</span>setrecruitchannel <span class="arg">&lt;channel&gt;</span><span class="badges"><span class="badge">privileged</span> <span class="badge">per-server</span></span></h3>
@@ -431,7 +431,7 @@
 
       <article class="cmd" id="setclanmanager" data-search="setclanmanager manager assign leader recruiting toggle">
         <h3 class="sig"><span class="slash">/</span>setclanmanager <span class="arg">&lt;clan&gt; &lt;user&gt;</span><span class="badges"><span class="badge">privileged</span> <span class="badge">per-server</span></span></h3>
-        <p>Assigns — or unassigns, it toggles — who manages a clan's recruiting.</p>
+        <p>Assigns (or unassigns, it toggles) who manages a clan's recruiting.</p>
         <table class="params">
           <tr><td>clan</td><td>Required. Clan tag or a server nickname.</td></tr>
           <tr><td>user</td><td>Required. The member to assign or unassign. Assign several to share a clan.</td></tr>
@@ -445,7 +445,7 @@
 
       <article class="cmd" id="editneeds" data-search="editneeds pin recruits needed number set clear">
         <h3 class="sig"><span class="slash">/</span>editneeds <span class="arg">&lt;clan&gt; &lt;number&gt;</span><span class="badges"><span class="badge">privileged</span> <span class="badge">per-server</span></span></h3>
-        <p>Pins a recruits-needed number by hand — for "I'm about to kick three, list us for three more."</p>
+        <p>Pins a recruits-needed number by hand: for "I'm about to kick three, list us for three more."</p>
         <table class="params">
           <tr><td>clan</td><td>Required. Clan tag or a server nickname.</td></tr>
           <tr><td>number</td><td>Required. Recruits needed, 0–50. 0 clears the clan from the list.</td></tr>
@@ -457,7 +457,7 @@
 
       <article class="cmd" id="viewneeds" data-search="viewneeds recruits needed clans overview recruiter">
         <h3 class="sig"><span class="slash">/</span>viewneeds<span class="badges"><span class="badge">privileged</span> <span class="badge">per-server</span></span></h3>
-        <p>Every clan that needs recruits, most-needed first, with current member counts — the recruiter's overview.</p>
+        <p>Every clan that needs recruits, most-needed first, with current member counts, the recruiter's overview.</p>
       </article>
     </section>
 
@@ -467,13 +467,13 @@
 
       <article class="cmd" id="spy_ai" data-search="spy_ai spy scout opponent war decks duel winrate deckai">
         <h3 class="sig"><span class="slash">/</span>spy_ai <span class="arg">&lt;opponent&gt; [someone_else]</span><span class="badges"><span class="badge">interactive</span></span></h3>
-        <p>Scouts an opponent's available war-duel decks, shows your win rate against each, and — as the duel plays out — suggests your best remaining deck for the next match.</p>
+        <p>Scouts an opponent's available war-duel decks, shows your win rate against each, and, as the duel plays out, suggests your best remaining deck for the next match.</p>
         <table class="params">
           <tr><td>opponent</td><td>Required. The player tag of who you're dueling.</td></tr>
           <tr><td>someone_else</td><td>Optional. @mention the person actually dueling, if it isn't you.</td></tr>
         </table>
         <ul class="notes">
-          <li>Requires a DeckAI ID on the dueling player's account — add one in <code>/link</code>.</li>
+          <li>Requires a DeckAI ID on the dueling player's account, add one in <code>/link</code>.</li>
           <li>After each match, tell the bot which decks were played and it recommends your next pick.</li>
         </ul>
       </article>
@@ -496,7 +496,7 @@
 
 <footer>
   <div class="wrap">
-    <p>Clash Royale clan-management bot — command reference.</p>
+    <p>Clan Info Discord Bot: command reference.</p>
     <p>This content is not affiliated with, endorsed, or sponsored by Supercell. See Supercell's <a href="https://supercell.com/en/fan-content-policy/" target="_blank" rel="noopener">Fan Content Policy</a>.</p>
   </div>
 </footer>

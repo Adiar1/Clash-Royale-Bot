@@ -189,24 +189,24 @@ class ReminderFlowView(View):
     def _channel_step(self) -> discord.Embed:
         self._swap_items(ReminderChannelSelect())
         return make_embed(
-            f"Reminders — {self.clan_name}",
+            f"Reminders: {self.clan_name}",
             "Which channel should the automated reminders be sent to?",
         )
 
     def _timezone_step(self) -> discord.Embed:
         self._swap_items(ReminderTimezoneSelect())
         return make_embed(
-            f"Reminders — {self.clan_name}",
+            f"Reminders: {self.clan_name}",
             "Which timezone should the reminder times be shown in?",
         )
 
     def _times_step(self) -> discord.Embed:
         self._swap_items(ReminderTimeSelect(self.timezone))
         return make_embed(
-            f"Reminders — {self.clan_name}",
+            f"Reminders: {self.clan_name}",
             f"At what times ({timezone_label(self.timezone)}) should the reminders go out?\n"
             "Each war day runs 10:00 UTC to 10:00 UTC, so the options cover that window in "
-            "order — from the first hour of the war day to its last.",
+            "order, from the first hour of the war day to its last.",
         )
 
     def _menu_step(self, note: str | None = None) -> discord.Embed:
@@ -217,7 +217,7 @@ class ReminderFlowView(View):
             self._button("Delete Reminders", ButtonStyle.danger, self._delete_pressed),
         )
         embed = make_embed(
-            f"Reminders — {self.clan_name} (#{self.clan_tag})",
+            f"Reminders: {self.clan_name} (#{self.clan_tag})",
             note or "Reminders are sent at the times below on war days (Thursday-Sunday).",
         )
         embed.add_field(name="Channel", value=f"<#{self.reminder.channel_id}>", inline=False)
@@ -244,7 +244,7 @@ class ReminderFlowView(View):
         if missing:
             self._swap_items(ReminderChannelSelect())
             embed = make_embed(
-                f"Reminders — {self.clan_name}",
+                f"Reminders: {self.clan_name}",
                 f"⚠️ I'm missing **{' and '.join(missing)}** in <#{channel_id}>.\n"
                 "Slash commands work even in channels I can't access, but reminders are regular "
                 "messages, so I need those permissions there. Add me (or my role) to that "
@@ -283,11 +283,11 @@ class ReminderFlowView(View):
         result = await self.cog.deliver_reminder(self.reminder)
         notes = {
             "sent": f"✅ Reminder sent to <#{self.reminder.channel_id}>.",
-            "nothing_due": "ℹ️ Nothing to send right now — it's a training day or everyone "
+            "nothing_due": "ℹ️ Nothing to send right now. It's a training day or everyone "
                            "has finished their attacks.",
             "no_channel": "⚠️ The configured channel no longer exists. Pick a new one with Change Channel.",
             "forbidden": f"⚠️ I don't have permission to post in <#{self.reminder.channel_id}>. Slash "
-                         "commands work without channel access, but reminders are regular messages — "
+                         "commands work without channel access, but reminders are regular messages. "
                          "I need **View Channel** and **Send Messages** there.",
         }
         await interaction.edit_original_response(embed=self._menu_step(notes[result]), view=self)

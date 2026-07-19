@@ -64,7 +64,7 @@ def build_needs_embed(name: str, clan_tag: str, count: int | None, needed: int,
         parts.append(f"Members: {count}/{CLAN_MAX_MEMBERS} ({open_slots} open)")
     parts.append(f"Source: {'📌 pinned by a leader' if manual else '🔄 auto-tracked (open slots)'}")
     parts += ["", "Tap a button to adjust. **Use suggested** keeps it auto-tracked."]
-    return make_embed(f"Recruiting — {name} (#{clan_tag})", "\n".join(parts), color=EMBED_COLOR)
+    return make_embed(f"Recruiting: {name} (#{clan_tag})", "\n".join(parts), color=EMBED_COLOR)
 
 
 async def render_needs_message(interaction: Interaction, guild_id: int, clan_tag: str,
@@ -284,12 +284,12 @@ class RecruitCog(commands.Cog):
 
         channel_id = await self.bot.repo.recruit_channel(guild_id)
         header = f"Recruiting prompts post in <#{channel_id}>." if channel_id \
-            else "⚠️ No recruiting channel set — run `/setrecruitchannel`."
+            else "⚠️ No recruiting channel set. Run `/setrecruitchannel`."
         lines = [header, ""]
         for tag, name, managers in rows:
             label = f"{name} (#{tag})" if name else f"#{tag}"
             mentions = ", ".join(f"<@{uid}>" for uid in managers) or "None"
-            lines.append(f"**{label}** — {mentions}")
+            lines.append(f"**{label}**: {mentions}")
 
         for index, page in enumerate(_paginate(lines)):
             title = "Clan Managers" if index == 0 else "Clan Managers (continued)"
@@ -355,7 +355,7 @@ class RecruitCog(commands.Cog):
             label = name or f"#{clan_tag}"
             tag_suffix = f" (#{clan_tag})" if name else ""
             count_suffix = f" · {count}/{CLAN_MAX_MEMBERS} in clan" if count is not None else ""
-            lines.append(f"**{needed}** needed — {label}{tag_suffix}{count_suffix}")
+            lines.append(f"**{needed}** needed: {label}{tag_suffix}{count_suffix}")
 
         for index, page in enumerate(_paginate(lines)):
             title = "Clan Recruitment Needs" if index == 0 else "Clan Recruitment Needs (continued)"
@@ -426,7 +426,7 @@ class RecruitCog(commands.Cog):
 
         current_need = await self.bot.repo.clan_needs(clan_tag, guild_id) or 0
         mentions = " ".join(f"<@{uid}>" for uid in managers)
-        note = f"👋 {left} member{'s' if left != 1 else ''} left **{clan_name}** — is the number below right?"
+        note = f"👋 {left} member{'s' if left != 1 else ''} left **{clan_name}**. Is the number below right?"
         embed = build_needs_embed(clan_name, clan_tag, count, current_need, manual, open_slots, note)
         try:
             await thread.send(content=mentions, embed=embed, view=NeedsPromptView())
@@ -452,7 +452,7 @@ class RecruitCog(commands.Cog):
             return None
         try:
             thread = await parent.create_thread(
-                name=f"Recruiting — {clan_name}"[:100],
+                name=f"Recruiting: {clan_name}"[:100],
                 type=discord.ChannelType.public_thread,
             )
         except discord.Forbidden:

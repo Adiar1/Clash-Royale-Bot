@@ -287,7 +287,7 @@ def format_spy_report(war_data: dict | None) -> str:
             if not isinstance(deck, dict):
                 continue
             lines.append(
-                f"   {_format_deck_cards(deck.get('deck', []))} — used {_format_spy_date(deck.get('date', ''))}"
+                f"   {_format_deck_cards(deck.get('deck', []))}, used {_format_spy_date(deck.get('date', ''))}"
             )
         lines.append("")
 
@@ -522,7 +522,7 @@ class MiscCog(commands.Cog):
             if player_decks and available:
                 view = SpyDuelView(interaction.user.id, player_decks, available)
                 await interaction.followup.send(
-                    "🎮 **Track the duel** — after each match, log who played what "
+                    "🎮 **Track the duel:** after each match, log who played what "
                     "and I'll suggest your next pick.",
                     view=view,
                 )
@@ -531,26 +531,17 @@ class MiscCog(commands.Cog):
     async def info(self, interaction: Interaction):
         guide_url = self.bot.config.guide_url
         embed = make_embed(
-            "Clash Royale Clan Management Bot",
+            "Clan Info Discord Bot",
             "Your all-in-one tool for war tracking, member stats, account linking, "
             "war-day reminders, and hands-off recruiting for a whole clan family.",
         )
         embed.add_field(
-            name="📖 Full command guide",
+            name="Full command guide",
             value=(
-                f"Every command, explained — with setup walkthroughs:\n{guide_url}"
+                f"Every command, explained, with setup walkthroughs:\n{guide_url}"
                 if guide_url else
                 "Type `/` in Discord to browse every command. (A server admin can set "
                 "`GUIDE_URL` to link the full guide here.)"
-            ),
-            inline=False,
-        )
-        embed.add_field(
-            name="💡 Quick tips",
-            value=(
-                "- The `#` is optional and tags aren't case-sensitive\n"
-                "- Use a clan **nickname** (`/nicklink`) in place of a tag\n"
-                "- Player commands accept a Discord **@mention** instead of a tag"
             ),
             inline=False,
         )

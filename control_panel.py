@@ -420,12 +420,12 @@ def update_and_restart():
 
         # Check if anything was updated
         if "Already up to date" in pull_result.stdout or "Already up-to-date" in pull_result.stdout:
-            message = "Already on the newest version — everything restarted anyway."
+            message = "Already on the newest version. Everything restarted anyway."
         else:
             message = "Updated and restarted successfully."
 
         if panel_restarting:
-            message += " The control panel is reloading too — give it a few seconds, then refresh this page."
+            message += " The control panel is reloading too, give it a few seconds, then refresh this page."
         if stashed:
             message += " Local changes were preserved."
 
@@ -474,7 +474,7 @@ def file_viewer():
                 try:
                     size = format_size(item.stat().st_size)
                 except OSError:
-                    size = "—"
+                    size = "unknown"
             items.append({
                 "name": item.name,
                 "path": str(item.relative_to(BOT_DIR)),  # relative path

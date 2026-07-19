@@ -512,7 +512,7 @@ class LinksCog(commands.Cog):
         lines = ["Here are all the clan nicknames linked in this server, sorted alphabetically:"]
         for (clan_tag, nickname), name in zip(links, names, strict=True):
             label = f"{name} (#{clan_tag})" if name else f"#{clan_tag}"
-            lines.append(f"**{nickname}** — {label}")
+            lines.append(f"**{nickname}**: {label}")
 
         # Split into multiple messages only if the text exceeds one embed's limit.
         pages: list[str] = []
