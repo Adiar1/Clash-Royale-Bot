@@ -122,6 +122,22 @@ def logout():
     return redirect(url_for('login'))
 
 
+# ---------- Public command guide (no login required) ----------
+GUIDE_FILE = STATIC_DIR / "guide.html"
+
+
+@app.route('/guide')
+def command_guide():
+    """The user-facing command guide, served publicly so anyone can read it.
+
+    Point the bot's GUIDE_URL at this route (e.g. https://your-host/guide) so
+    /info links here.
+    """
+    if not GUIDE_FILE.exists():
+        return "Command guide is not available.", 404
+    return send_file(GUIDE_FILE)
+
+
 # ---------- UI ----------
 @app.route('/')
 @login_required

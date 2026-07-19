@@ -7,6 +7,7 @@ This Discord bot provides various commands and functionalities related to Clash 
 - Player statistics and information
 - Clan war performance tracking
 - Automated attack reminders on war days (per-server channel, timezone, and reminder times)
+- Recruiting needs tracking for a clan family — auto-derived from each clan's open slots, with one-tap manager prompts when a clan loses members
 - Account linking and management (Clash Royale tags and optional DeckAI IDs)
 - Opponent war-deck scouting via DeckAI (`/spy_ai`)
 - Clan member kick and promotion recommendations
@@ -48,6 +49,7 @@ To use this bot in your Discord server, simply click on the following link:
    DISCORD_TOKEN=your_discord_bot_token
    CLASH_ROYALE_API_KEY=your_clash_royale_api_key
    DECKAI_API_KEY=optional_deckai_key       # only needed for /spy_ai
+   GUIDE_URL=https://your-host/guide        # optional; where /info links for the command guide
    FLASK_SECRET_KEY=random_secret           # only needed for the control panel
    ADMIN_PASSWORD=control_panel_password    # only needed for the control panel
    ```
@@ -67,7 +69,8 @@ automatically (the original tables are kept as `legacy_*` backups).
 
 An optional Flask control panel lets you start/stop the bot, pull updates from
 git (with an update-and-restart shortcut), browse and download the bot's files,
-edit `.env`, and inspect the database from a browser:
+edit `.env`, and inspect the database from a browser. It also serves the public
+[command guide](#command-guide) at `/guide`:
 
 ```
 python control_panel.py
@@ -90,7 +93,7 @@ bot.py             ClashBot: shared aiohttp session, service clients, global err
 config.py          typed env config (fails fast on missing vars)
 errors.py          BotError hierarchy shown to users by the global handler
 control_panel.py   Flask web control panel (process control, .env editor, DB viewer)
-cogs/              slash commands grouped by domain (war, clan, links, admin, misc, reminders)
+cogs/              slash commands grouped by domain (war, clan, links, admin, misc, reminders, recruit)
 services/          all external HTTP calls (Clash Royale API, DeckAI) + scoring math
 db/                aiosqlite schema/migration + repository with every query
 ui/                shared embeds, emoji constants, and reusable views
@@ -106,43 +109,19 @@ ruff check .        # lint
 pytest              # tests
 ```
 
-## Commands
+## Command Guide
 
-### War
+Full, always-current usage docs for every command — war tracking, member
+scoring, account links, reminders, and the hands-off recruiting system — live in
+a single self-contained web guide at [`linode/static/guide.html`](linode/static/guide.html).
 
-- `/currentwar <clan_tag>`: Get information about the current war for a clan
-- `/lastwar <clan_tag>`: Get information about the last war for a clan
-- `/nthwar <clan_tag> <n>`: Get information about the nth previous war for a clan (1-10)
-- `/stats <player_tag> <from_war> <to_war>`: Calculate individual stats over a range of wars
+The control panel serves it publicly at **`/guide`** (e.g. `https://your-host/guide`),
+so you can share the link with clan leaders without giving them panel access.
+Point the bot's `GUIDE_URL` at that address and the in-Discord `/info` command
+links straight to it.
 
-### Player & Clan
-
-- `/player <player_tag>`: Get detailed information about a player
-- `/members <clan_tag>`: Get information about current clan members
-- `/clan <clan_tag>`: List current clan members and how many weeks ago they joined
-- `/viewlinks <clan_tag>`: List clan members with their linked Discord accounts
-- `/rankings <tourny_tag>`: List tournament members' names, scores, and ranks
-- `/whotokick <clan_tag> [n] [exclude_leadership]`: Get recommendations for members to kick from the clan
-- `/whotopromote <clan_tag> [n] [exclude_leadership]`: Get recommendations for members who might deserve a promotion
-- `/spy_ai <opponent_player_tag> [someone_else]`: Scout an opponent's recent clan war decks via DeckAI
-
-### Account Linking
-
-- `/link [user]`: Open the link manager to set a main player tag, add alts, edit DeckAI IDs, or remove accounts (managing another user requires privileges)
-- `/profile [user]`: View linked player tags for yourself or another user
-- `/wipelinks [user]`: Remove linked player tags
-
-### Server Management
-
-- `/nicklink <clan_tag> [nickname]`: Link a clan tag to a nickname (leave nickname empty to delete it)
-- `/viewnicks`: View all clan nicknames in this server
-- `/reminders <clan_tag>`: Set up or edit automated attack reminders sent on war days
-- `/editperms` / `/viewperms`: Edit or view privileged roles in this server
-- `/editmemberroles` / `/viewmemberroles`: Edit or view roles corresponding to Clash Royale positions
-
-Clan commands accept a server nickname in place of a tag, and player commands
-accept a Discord @mention in place of a tag. For a full list of commands, use
-the `/info` command in Discord after adding the bot to your server.
+In Discord, `/info` gives a short overview and the guide link, and typing `/`
+lists every command with its own description and parameter hints.
 
 ## Contributing
 

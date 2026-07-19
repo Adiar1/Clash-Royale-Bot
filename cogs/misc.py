@@ -15,7 +15,6 @@ from ui.emojis import (
     CW2_EMOJI,
     EVOLUTION_EMOJI,
     FAME_EMOJI,
-    FORMER_MEMBER_EMOJI,
     GC_EMOJI,
     LEAGUE_IMAGES,
     LEVEL_14_EMOJI,
@@ -23,7 +22,6 @@ from ui.emojis import (
     LEVEL_16_EMOJI,
     LEVEL_EMOJIS,
     MULTIDECK_EMOJI,
-    NEW_MEMBER_EMOJI,
     RANKED_MEDAL_EMOJI,
     TROPHYROAD_EMOJI,
 )
@@ -529,98 +527,31 @@ class MiscCog(commands.Cog):
                     view=view,
                 )
 
-    @app_commands.command(name="info", description="Display information about the bot")
+    @app_commands.command(name="info", description="Learn what the bot does and open the full command guide")
     async def info(self, interaction: Interaction):
+        guide_url = self.bot.config.guide_url
         embed = make_embed(
-            "Clash Royale Clan Management Bot 🗣️🗣️🔥🔥🔥",
-            "Your ultimate tool for managing and tracking your Clash Royale clan's performance!",
+            "Clash Royale Clan Management Bot",
+            "Your all-in-one tool for war tracking, member stats, account linking, "
+            "war-day reminders, and hands-off recruiting for a whole clan family.",
         )
-
         embed.add_field(
-            name="📊 War Commands",
-            value="""
-- `/currentwar [clan_tag]` - Get current war stats
-- `/lastwar [clan_tag]` - Get last war stats
-- `/nthwar [clan_tag] [n]` - Get stats from n wars ago (1-10)
-            """,
+            name="📖 Full command guide",
+            value=(
+                f"Every command, explained — with setup walkthroughs:\n{guide_url}"
+                if guide_url else
+                "Type `/` in Discord to browse every command. (A server admin can set "
+                "`GUIDE_URL` to link the full guide here.)"
+            ),
             inline=False,
         )
         embed.add_field(
-            name="👥 Player & Clan Commands",
-            value="""
-- `/members [clan_tag]` - View current clan members
-- `/player [player_tag]` - View detailed player stats
-- `/clan [clan_tag]` - List clan members and join dates
-- `/viewlinks [clan_tag]` - List clan members with their linked Discord accounts
-- `/rankings [tourny_tag]` - List tournament rankings
-- `/stats [player_tag] [from_war] [to_war]` - Calculate player stats over war range
-            """,
-            inline=False,
-        )
-        embed.add_field(
-            name="🔗 Account Linking",
-            value="""
-- `/link [@user]` - Open the link manager to set a main tag, add alts, edit DeckAI IDs, or remove accounts (managing another user requires privileges; non server specific)
-- `/profile [@user]` - View linked accounts
-- `/wipelinks [@user]` - Remove linked accounts
-            """,
-            inline=False,
-        )
-        embed.add_field(
-            name="⚙️ Server Management",
-            value="""
-- `/nicklink [clan_tag] [nickname]` - Link clan tag to nickname, or leave nickname empty to delete it (server specific)
-- `/viewnicks` - View clan nicknames in this server
-- `/reminders [clan_tag]` - Set up or edit automated attack reminders sent on war days (server specific)
-- `/editperms` - Edit privileged roles (server specific)
-- `/viewperms` - View privileged roles
-- `/editmemberroles` - Edit roles for clan roles (server specific)
-- `/viewmemberroles` - View roles for clan roles (server specific)
-            """,
-            inline=False,
-        )
-        embed.add_field(
-            name="🧲 Recruiting (privileged, server specific)",
-            value="""
-- `/viewneeds` - See which clans need recruits and how many, most-needed first
-- `/editneeds [tag] [number]` - Pin how many recruits a clan needs (0 to clear)
-- `/setrecruitchannel [channel]` - Pick the channel where per-clan recruiting threads are posted
-- `/setclanmanager [tag] [@user]` - Assign (or unassign) someone to manage a clan's recruiting
-- `/viewclanmanagers` - See who manages recruiting for each clan
-- I auto-track each managed clan's open slots from the API and ping the manager(s) in that clan's thread when someone leaves, so the number stays fresh without daily commands
-            """,
-            inline=False,
-        )
-        embed.add_field(
-            name="📊 Advanced Features",
-            value="""
-- `/whotokick [clan_tag] [n] [exclude_leadership]` - Get recommendations for kicking members (n is by default 5 but can be from 1 to 24)
-- `/whotopromote [clan_tag] [n] [exclude_leadership]` - Get recommendations for promoting members (n is by default 5 but can be from 1 to 24)
-- `/spy_ai [opponent_player_tag] [@someone_else]` - Scout an opponent's available war-duel decks via DeckAI, see your win rate against each, and get live pick suggestions as the duel plays out (requires a linked DeckAI ID)
-            """,
-            inline=False,
-        )
-        embed.add_field(
-            name="🔄 Sorting & Customization",
-            value="""
-- Use dropdown menus to sort and order results in war and member commands
-- Sort by: Fame, Name, Decks Used, Tag, Rank (options vary by command)
-- Order data: Customize the display order of all data
-            """,
-            inline=False,
-        )
-        embed.add_field(
-            name="💡 Pro Tips",
-            value=f"""
-- Hashtags (#) are optional in clan or player tags
-- Tags are not case-sensitive
-- Use clan nicknames instead of tags for convenience
-- Player commands also accept a Discord @mention in place of a tag (uses their linked account)
-- Download CSV files for detailed data analysis
-- {FAME_EMOJI} Fame earned | {MULTIDECK_EMOJI} Decks used
-- {FORMER_MEMBER_EMOJI} Former members | {NEW_MEMBER_EMOJI} New members (joined after last war ended)
-- Privileged commands require proper server permissions (All command can be used by anyone before permissions are set up with `/editperms`. Once privileges are set up, only those roles can use them)
-            """,
+            name="💡 Quick tips",
+            value=(
+                "- The `#` is optional and tags aren't case-sensitive\n"
+                "- Use a clan **nickname** (`/nicklink`) in place of a tag\n"
+                "- Player commands accept a Discord **@mention** instead of a tag"
+            ),
             inline=False,
         )
 
@@ -630,6 +561,8 @@ class MiscCog(commands.Cog):
             icon_url=developer.display_avatar.url,
         )
         view = View()
+        if guide_url:
+            view.add_item(discord.ui.Button(label="Command Guide", style=ButtonStyle.link, url=guide_url))
         view.add_item(discord.ui.Button(
             label="Contact Developer",
             style=ButtonStyle.link,
