@@ -18,6 +18,7 @@ Setup is three privileged commands: /setrecruitchannel (once, guild-wide),
 
 import asyncio
 import logging
+from typing import Literal
 
 import discord
 from discord import ButtonStyle, Interaction, app_commands
@@ -252,7 +253,45 @@ class RecruitCog(commands.Cog):
                 value="Run `/setrecruitchannel` so I can post recruiting prompts.",
                 inline=False,
             )
+        if managers:
+            embed.set_footer(
+                text="Runs a roster larger than 50 and cycles members through? "
+                     "Use /setrecruitmode to stop auto-pings on departures."
+            )
         await interaction.followup.send(embed=embed)
+
+    # ---- /setrecruitmode ----
+
+    @app_commands.command(
+        name="setrecruitmode",
+        description="Set how a clan's recruiting is tracked: auto open-slots, or a manager-driven rotation roster",
+    )
+    @app_commands.describe(
+        tag="The clan tag or its server nickname",
+        mode="standard = auto-track open slots; rotation = larger roster you cycle members through",
+    )
+    @is_privileged()
+    async def setrecruitmode(self, interaction: Interaction, tag: str, mode: Literal["standard", "rotation"]):
+        await interaction.response.defer()
+        clan_tag = await resolve_clan_tag(interaction, tag)
+        clan = await self.bot.cr.clan(clan_tag)
+        name = clan.get("name") or f"#{clan_tag}"
+
+        await self.bot.repo.set_clan_mode(clan_tag, interaction.guild.id, mode)
+        if mode == "rotation":
+            desc = (
+                f"**{name}** (#{clan_tag}) is now a **rotation roster**.\n\n"
+                "I won't auto-adjust its number or ping managers when members leave — a "
+                "rotation clan keeps slots open on purpose. Set how many recruits you want "
+                "yourself with `/editneeds` (or the prompt buttons); `0` clears it."
+            )
+        else:
+            desc = (
+                f"**{name}** (#{clan_tag}) is now a **standard clan**.\n\n"
+                "I'll keep its number synced to open slots automatically and prompt the "
+                "managers whenever members leave."
+            )
+        await interaction.followup.send(embed=make_embed("Recruiting Mode Updated", desc, color=SUCCESS_COLOR))
 
     # ---- /viewclanmanagers ----
 
@@ -341,21 +380,24 @@ class RecruitCog(commands.Cog):
             except Exception:
                 return None
 
+        guild_id = interaction.guild.id
         clans = await asyncio.gather(*(_clan(tag) for tag, _ in needs))
+        modes = await asyncio.gather(*(self.bot.repo.clan_mode(tag, guild_id) for tag, _ in needs))
         rows = [
-            (clan_tag, needed, (clan or {}).get("name"), (clan or {}).get("members"))
-            for (clan_tag, needed), clan in zip(needs, clans, strict=True)
+            (clan_tag, needed, (clan or {}).get("name"), (clan or {}).get("members"), mode)
+            for (clan_tag, needed), clan, mode in zip(needs, clans, modes, strict=True)
         ]
         # Most-needy clans first, then alphabetically by name (falling back to tag).
         rows.sort(key=lambda r: (-r[1], (r[2] or r[0]).lower()))
 
-        total = sum(needed for _, needed, _, _ in rows)
+        total = sum(needed for _, needed, _, _, _ in rows)
         lines = [f"Clans needing recruits in this server (**{total}** total):"]
-        for clan_tag, needed, name, count in rows:
+        for clan_tag, needed, name, count, mode in rows:
             label = name or f"#{clan_tag}"
             tag_suffix = f" (#{clan_tag})" if name else ""
             count_suffix = f" · {count}/{CLAN_MAX_MEMBERS} in clan" if count is not None else ""
-            lines.append(f"**{needed}** needed: {label}{tag_suffix}{count_suffix}")
+            mode_suffix = " · 🧭 rotation roster" if mode == "rotation" else ""
+            lines.append(f"**{needed}** needed: {label}{tag_suffix}{count_suffix}{mode_suffix}")
 
         for index, page in enumerate(_paginate(lines)):
             title = "Clan Recruitment Needs" if index == 0 else "Clan Recruitment Needs (continued)"
@@ -392,6 +434,15 @@ class RecruitCog(commands.Cog):
         state = await self.bot.repo.clan_need(clan_tag, guild_id)
         prev_count = state.last_count if state else None
         manual = state.manual if state else False
+        mode = state.mode if state else "standard"
+
+        # Rotation clans run a roster larger than 50 and cycle members in and out on
+        # purpose, so open slots aren't demand and departures aren't recruiting events.
+        # Track the count for continuity, but never auto-adjust the number or prompt.
+        if mode == "rotation":
+            if prev_count != count:
+                await self.bot.repo.set_clan_last_count(clan_tag, guild_id, count)
+            return
 
         # Keep the auto baseline honest (a no-op for manually pinned clans).
         if not manual and (state is None or state.needed != open_slots):
@@ -407,8 +458,10 @@ class RecruitCog(commands.Cog):
 
         await self.bot.repo.set_clan_last_count(clan_tag, guild_id, count)
 
-        # Members left → prompt the managers to confirm/adjust. Joins self-resolve silently.
-        if count < prev_count:
+        # Members left → prompt the managers to confirm/adjust, but only while the number
+        # is auto-tracked. A manually pinned clan has opted out of the nudge until its
+        # manager changes the number (or taps "Use suggested"). Joins self-resolve silently.
+        if count < prev_count and not manual:
             await self._prompt_managers(guild_id, clan_tag, clan_name, count, open_slots,
                                         managers, prev_count - count, manual, state)
 

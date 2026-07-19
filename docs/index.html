@@ -411,6 +411,8 @@
       </ol>
       <p>That's the whole setup. From here the number stays current on its own; the commands below are only for checking in or overriding.</p>
 
+      <p><strong>Running a rotation roster?</strong> Some elite clans keep more than 50 players and cycle them in and out for war, so open slots aren't a recruiting need and normal departures shouldn't trigger a ping. Mark those clans with <code>/setrecruitmode &lt;clan&gt; rotation</code>: the bot stops auto-adjusting their number and won't ping on member drops. You set the number by hand with <code>/editneeds</code> (or the prompt buttons).</p>
+
       <div class="example">
         <p class="example-label">When a clan loses a member, the bot posts in that clan's thread and mentions its managers:</p>
         <div class="example-body">
@@ -419,7 +421,7 @@
           <p class="muted">Buttons: <code>Use suggested</code> <code>+1</code> <code>−1</code> <code>Set exact…</code> <code>We're full</code></p>
         </div>
       </div>
-      <p><strong>Use suggested</strong> keeps the clan on auto-tracking. The other buttons pin a number the bot won't overwrite, though it'll still check in if the clan loses more members. When someone joins, the number drops on its own with no ping. Buttons keep working even after the bot restarts.</p>
+      <p><strong>Use suggested</strong> keeps the clan on auto-tracking. The other buttons pin a number the bot won't overwrite — and it then leaves that clan alone, no more pings on further departures, until you change the number or tap <strong>Use suggested</strong> to hand it back to auto-tracking. When someone joins, the number drops on its own with no ping. Buttons keep working even after the bot restarts.</p>
 
       <article class="cmd" id="setrecruitchannel" data-search="setrecruitchannel recruiting channel thread setup">
         <h3 class="sig"><span class="slash">/</span>setrecruitchannel <span class="arg">&lt;channel&gt;</span><span class="badges"><span class="badge">privileged</span> <span class="badge">per-server</span></span></h3>
@@ -438,6 +440,18 @@
         </table>
       </article>
 
+      <article class="cmd" id="setrecruitmode" data-search="setrecruitmode rotation roster standard auto cycle elite war rotate">
+        <h3 class="sig"><span class="slash">/</span>setrecruitmode <span class="arg">&lt;clan&gt; &lt;mode&gt;</span><span class="badges"><span class="badge">privileged</span> <span class="badge">per-server</span></span></h3>
+        <p>Sets how a clan's recruiting is tracked. Most clans want the default; switch to rotation for a clan that keeps a roster larger than 50 and cycles members through war.</p>
+        <table class="params">
+          <tr><td>clan</td><td>Required. Clan tag or a server nickname.</td></tr>
+          <tr><td>mode</td><td>Required. <code>standard</code> — auto-track open slots and ping managers on member drops (the default). <code>rotation</code> — no auto-adjusting and no ping on drops; you set the number yourself.</td></tr>
+        </table>
+        <ul class="notes">
+          <li>Rotation clans still appear in <code>/viewneeds</code> whenever you've set a number, tagged as a rotation roster. Set it to 0 with <code>/editneeds</code> to clear it.</li>
+        </ul>
+      </article>
+
       <article class="cmd" id="viewclanmanagers" data-search="viewclanmanagers managers who recruiting list">
         <h3 class="sig"><span class="slash">/</span>viewclanmanagers<span class="badges"><span class="badge">privileged</span> <span class="badge">per-server</span></span></h3>
         <p>Lists who manages recruiting for each clan, and warns if the recruiting channel isn't set yet.</p>
@@ -451,7 +465,7 @@
           <tr><td>number</td><td>Required. Recruits needed, 0–50. 0 clears the clan from the list.</td></tr>
         </table>
         <ul class="notes">
-          <li>A pinned number isn't auto-overwritten. Tap <strong>Use suggested</strong> on a prompt to hand it back to auto-tracking.</li>
+          <li>A pinned number isn't auto-overwritten, and the bot stops pinging that clan on member drops until you change it. Tap <strong>Use suggested</strong> on a prompt to hand it back to auto-tracking.</li>
         </ul>
       </article>
 

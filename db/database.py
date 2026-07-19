@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS clan_needs (
     last_count INTEGER,                      -- member count at last poll (for change detection)
     thread_id  INTEGER,                      -- the clan's recruiting thread, if created
     updated_at TEXT,                         -- ISO8601 timestamp of the last change
+    mode       TEXT NOT NULL DEFAULT 'standard',  -- 'standard' = auto-track open slots; 'rotation' = manager-driven
     PRIMARY KEY (clan_tag, guild_id)
 );
 
@@ -138,6 +139,7 @@ class Database:
             ("last_count", "last_count INTEGER"),
             ("thread_id", "thread_id INTEGER"),
             ("updated_at", "updated_at TEXT"),
+            ("mode", "mode TEXT NOT NULL DEFAULT 'standard'"),
         ):
             if not await self._table_has_column("clan_needs", column):
                 await self.conn.execute(f"ALTER TABLE clan_needs ADD COLUMN {ddl}")

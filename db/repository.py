@@ -34,6 +34,7 @@ class ClanNeed:
     manual: bool  # True = a leader pinned the number; False = auto-tracked open slots
     last_count: int | None  # member count at the last poll
     thread_id: int | None  # the clan's recruiting thread, if created
+    mode: str = "standard"  # 'standard' = auto-track open slots; 'rotation' = manager-driven roster
 
 
 class Repository:
@@ -175,14 +176,14 @@ class Repository:
 
     async def clan_need(self, clan_tag: str, guild_id: int) -> ClanNeed | None:
         cursor = await self._conn.execute(
-            "SELECT needed, manual, last_count, thread_id FROM clan_needs "
+            "SELECT needed, manual, last_count, thread_id, mode FROM clan_needs "
             "WHERE clan_tag = ? AND guild_id = ?",
             (normalize_tag(clan_tag), int(guild_id)),
         )
         row = await cursor.fetchone()
         if not row:
             return None
-        return ClanNeed(normalize_tag(clan_tag), int(guild_id), row[0], bool(row[1]), row[2], row[3])
+        return ClanNeed(normalize_tag(clan_tag), int(guild_id), row[0], bool(row[1]), row[2], row[3], row[4])
 
     async def set_clan_needs(self, clan_tag: str, guild_id: int, needed: int, manual: bool = True) -> None:
         await self._ensure_clan_needs_row(clan_tag, guild_id)
@@ -217,6 +218,26 @@ class Repository:
         )
         row = await cursor.fetchone()
         return (row[0], row[1]) if row else None
+
+    async def clan_mode(self, clan_tag: str, guild_id: int) -> str:
+        """'standard' (auto-track open slots) or 'rotation' (manager-driven roster).
+
+        Defaults to 'standard' for a clan with no recruiting row yet.
+        """
+        cursor = await self._conn.execute(
+            "SELECT mode FROM clan_needs WHERE clan_tag = ? AND guild_id = ?",
+            (normalize_tag(clan_tag), int(guild_id)),
+        )
+        row = await cursor.fetchone()
+        return row[0] if row else "standard"
+
+    async def set_clan_mode(self, clan_tag: str, guild_id: int, mode: str) -> None:
+        await self._ensure_clan_needs_row(clan_tag, guild_id)
+        await self._conn.execute(
+            "UPDATE clan_needs SET mode = ? WHERE clan_tag = ? AND guild_id = ?",
+            (mode, normalize_tag(clan_tag), int(guild_id)),
+        )
+        await self._conn.commit()
 
     async def delete_clan_needs(self, clan_tag: str, guild_id: int) -> bool:
         cursor = await self._conn.execute(

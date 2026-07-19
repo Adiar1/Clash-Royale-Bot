@@ -109,6 +109,32 @@ async def test_clan_need_tracking(repo):
     await repo.set_clan_last_count("CLAN2", 1, 50)
     fresh = await repo.clan_need("CLAN2", 1)
     assert fresh.needed == 0 and fresh.manual is False and fresh.last_count == 50
+    assert fresh.mode == "standard"  # clans are standard (auto-tracked) unless told otherwise
+
+
+async def test_clan_mode(repo):
+    # Unknown clans and plain need rows default to standard.
+    assert await repo.clan_mode("CLAN1", 1) == "standard"
+    await repo.set_clan_needs("#clan1", 1, 5)
+    assert await repo.clan_mode("CLAN1", 1) == "standard"
+
+    # Switching to rotation persists and shows up on the ClanNeed too.
+    await repo.set_clan_mode("clan1", 1, "rotation")
+    assert await repo.clan_mode("CLAN1", 1) == "rotation"
+    assert (await repo.clan_need("CLAN1", 1)).mode == "rotation"
+
+    # Mode is per (clan, guild) and orthogonal to the need value.
+    assert await repo.clan_mode("CLAN1", 2) == "standard"  # other guild
+    await repo.set_clan_needs("CLAN1", 1, 9, manual=True)
+    assert await repo.clan_mode("CLAN1", 1) == "rotation"  # unchanged by set_clan_needs
+
+    # set_clan_mode on a fresh clan creates the row with default need.
+    await repo.set_clan_mode("CLAN2", 1, "rotation")
+    fresh = await repo.clan_need("CLAN2", 1)
+    assert fresh.mode == "rotation" and fresh.needed == 0
+
+    await repo.set_clan_mode("CLAN1", 1, "standard")
+    assert await repo.clan_mode("CLAN1", 1) == "standard"
 
 
 async def test_clan_managers(repo):
