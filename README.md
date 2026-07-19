@@ -49,7 +49,7 @@ To use this bot in your Discord server, simply click on the following link:
    DISCORD_TOKEN=your_discord_bot_token
    CLASH_ROYALE_API_KEY=your_clash_royale_api_key
    DECKAI_API_KEY=optional_deckai_key       # only needed for /spy_ai
-   GUIDE_URL=https://your-host/guide        # optional; where /info links for the command guide
+   GUIDE_URL=https://adiar1.github.io/Clash-Royale-Bot/   # optional; where /info links for the command guide
    FLASK_SECRET_KEY=random_secret           # only needed for the control panel
    ADMIN_PASSWORD=control_panel_password    # only needed for the control panel
    ```
@@ -69,8 +69,9 @@ automatically (the original tables are kept as `legacy_*` backups).
 
 An optional Flask control panel lets you start/stop the bot, pull updates from
 git (with an update-and-restart shortcut), browse and download the bot's files,
-edit `.env`, and inspect the database from a browser. It also serves the public
-[command guide](#command-guide) at `/guide`:
+edit `.env`, and inspect the database from a browser. Its `/guide` route
+redirects to the hosted [command guide](#command-guide) (or serves it directly
+if `GUIDE_URL` isn't set):
 
 ```
 python control_panel.py
@@ -80,7 +81,7 @@ It listens on port 5000 by default (override with `PORT`) and requires
 `FLASK_SECRET_KEY` and `ADMIN_PASSWORD` to be set in `.env`.
 
 For a production host, run the bot and panel as systemd services so they start
-on boot and restart on crash — see [`linode/DEPLOY.md`](linode/DEPLOY.md). When
+on boot and restart on crash — unit files are in [`linode/`](linode/). When
 `BOT_SERVICE` is set in `.env` (e.g. `BOT_SERVICE=crbot.service`), the panel's
 start/stop toggle drives that systemd service instead of spawning the bot as a
 child process, which keeps the bot's lifecycle clean across panel restarts.
@@ -111,14 +112,14 @@ pytest              # tests
 
 ## Command Guide
 
-Full, always-current usage docs for every command — war tracking, member
-scoring, account links, reminders, and the hands-off recruiting system — live in
-a single self-contained web guide at [`linode/static/guide.html`](linode/static/guide.html).
+Full usage docs for every command — war tracking, member scoring, account
+links, reminders, and the recruiting system — live in a single self-contained
+page at [`docs/index.html`](docs/index.html), hosted by GitHub Pages at
+**<https://adiar1.github.io/Clash-Royale-Bot/>**.
 
-The control panel serves it publicly at **`/guide`** (e.g. `https://your-host/guide`),
-so you can share the link with clan leaders without giving them panel access.
 Point the bot's `GUIDE_URL` at that address and the in-Discord `/info` command
-links straight to it.
+links straight to it. The control panel's `/guide` route redirects there too,
+so older links keep working.
 
 In Discord, `/info` gives a short overview and the guide link, and typing `/`
 lists every command with its own description and parameter hints.

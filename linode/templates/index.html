@@ -23,10 +23,12 @@
     <h2>Deploy</h2>
     <div class="btn-row">
         <form action="{{ url_for('update_files') }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-secondary">Pull latest changes</button>
         </form>
         <form action="{{ url_for('update_and_restart') }}" method="post"
               onsubmit="return confirm('This will stop the bot, pull the latest changes, and restart it. Continue?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn">Update &amp; restart</button>
         </form>
     </div>
@@ -44,6 +46,11 @@
         const form = document.createElement('form');
         form.method = 'post';
         form.action = action;
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = 'csrf_token';
+        csrf.value = '{{ csrf_token() }}';
+        form.appendChild(csrf);
         document.body.appendChild(form);
         form.submit();
     });

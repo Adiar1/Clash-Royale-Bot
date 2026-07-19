@@ -7,6 +7,7 @@
 
 <div class="card">
     <form method="post" onsubmit="return confirm('Save changes to .env? The bot must be restarted for changes to take effect.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="field">
             <textarea name="env_content" spellcheck="false">{{ env_content }}</textarea>
         </div>

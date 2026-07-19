@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Command reference for the Clash Royale clan-management Discord bot: war tracking, member stats, account linking, reminders, and recruiting.">
+<title>Clash Royale Bot — Command Guide</title>
+<style>
+  :root {
+    --bg: #FBFBFD;
+    --surface: #F5F4FA;
+    --ink: #201B31;
+    --muted: #605A76;
+    --line: #E5E2EE;
+    --accent: #5B34C4;
+    --code-bg: #F3F1F9;
+    --code-ink: #453A6E;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #131020;
+      --surface: #1B1630;
+      --ink: #E9E6F3;
+      --muted: #A59DBB;
+      --line: #2B2442;
+      --accent: #B49AF7;
+      --code-bg: #221B38;
+      --code-ink: #D3C8F2;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    border-top: 3px solid var(--accent);
+  }
+  a { color: var(--accent); }
+  a:hover { text-decoration-thickness: 2px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  code {
+    font-family: var(--mono);
+    font-size: .86em;
+    background: var(--code-bg);
+    color: var(--code-ink);
+    padding: .1em .35em;
+    border-radius: 4px;
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  /* Header */
+  header.site { border-bottom: 1px solid var(--line); padding: 28px 0 24px; }
+  .site-brand { font-size: .82rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+  .site h1 { font-size: 1.7rem; font-weight: 650; margin: 0 0 8px; letter-spacing: -.01em; }
+  .site .lede { color: var(--muted); max-width: 62ch; margin: 0 0 12px; }
+
+  /* Layout */
+  .layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 48px; padding: 28px 0 72px; }
+
+  nav.toc { position: sticky; top: 24px; align-self: start; max-height: calc(100vh - 48px); overflow-y: auto; font-size: .9rem; }
+  .toc-label { font-size: .74rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 14px 0 6px; }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; }
+  nav.toc a { display: block; padding: 4px 0; color: var(--muted); text-decoration: none; }
+  nav.toc a:hover { color: var(--accent); text-decoration: underline; }
+
+  .filter {
+    width: 100%;
+    font: .9rem/1.4 inherit;
+    color: var(--ink);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 7px 10px;
+  }
+  .filter::placeholder { color: var(--muted); }
+
+  main { max-width: 72ch; }
+  section { margin-bottom: 40px; }
+  section h2 { font-size: 1.3rem; font-weight: 650; margin: 0 0 4px; padding-bottom: 8px; border-bottom: 1px solid var(--line); scroll-margin-top: 16px; }
+  .sec-intro { color: var(--muted); margin: 10px 0 0; }
+  main p { margin: 10px 0; }
+  main p strong { font-weight: 600; }
+
+  /* Command entry */
+  .cmd { padding: 18px 0; border-bottom: 1px solid var(--line); scroll-margin-top: 16px; }
+  .cmd:last-child { border-bottom: none; }
+  .sig { font-family: var(--mono); font-size: .98rem; font-weight: 600; margin: 0; }
+  .sig .slash { color: var(--accent); }
+  .sig .arg { color: var(--muted); font-weight: 500; }
+  .badges { display: inline-flex; gap: 6px; margin-left: 10px; vertical-align: 1px; }
+  .badge {
+    font: 600 .68rem/1.7 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 0 6px;
+  }
+  .cmd > p { margin: 8px 0 0; }
+  .muted { color: var(--muted); }
+
+  .params { border-collapse: collapse; margin: 10px 0 0; font-size: .9rem; width: 100%; }
+  .params td { padding: 5px 14px 5px 0; vertical-align: top; }
+  .params td:first-child { font-family: var(--mono); font-size: .84rem; white-space: nowrap; color: var(--code-ink); }
+  .params td:last-child { color: var(--muted); width: 100%; }
+
+  .notes { margin: 10px 0 0; padding-left: 18px; font-size: .92rem; color: var(--muted); }
+  .notes li { margin: 3px 0; }
+  .notes li::marker { color: var(--accent); }
+
+  /* Note / warning blocks */
+  .callout { border-left: 3px solid var(--accent); background: var(--surface); padding: 10px 14px; margin: 14px 0; font-size: .93rem; border-radius: 0 6px 6px 0; }
+  .callout p { margin: 0; }
+
+  /* Setup steps */
+  .steps { margin: 10px 0 0; padding-left: 22px; }
+  .steps > li { margin: 10px 0; }
+  .steps > li::marker { font-weight: 600; color: var(--accent); }
+  .steps p { margin: 2px 0 0; color: var(--muted); font-size: .93rem; }
+
+  /* Example of a bot message */
+  .example { margin: 14px 0; font-size: .92rem; }
+  .example-label { color: var(--muted); margin: 0 0 6px; }
+  .example-body { border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 6px; padding: 12px 14px; background: var(--surface); }
+  .example-body p { margin: 4px 0; }
+
+  .empty { display: none; color: var(--muted); padding: 24px 0; }
+
+  footer { border-top: 1px solid var(--line); color: var(--muted); font-size: .84rem; }
+  footer .wrap { padding-top: 18px; padding-bottom: 28px; }
+  footer p { margin: 4px 0; }
+  footer a { color: inherit; }
+
+  @media (max-width: 820px) {
+    .layout { display: block; padding-top: 20px; }
+    nav.toc { position: static; max-height: none; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+    nav.toc ol { display: flex; flex-wrap: wrap; gap: 2px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <p class="site-brand">Clash Royale Bot</p>
+    <h1>Command guide</h1>
+    <p class="lede">Reference for every command in the clan-management bot: what it does, who can run it, and what to type. Covers war tracking, member stats, account linking, war-day reminders, and recruiting.</p>
+    <p class="lede"><a href="https://discord.com/oauth2/authorize?client_id=1260102504377483286&permissions=8&integration_type=0&scope=bot" target="_blank" rel="noopener">Add the bot to your server</a></p>
+  </div>
+</header>
+
+<div class="wrap layout">
+  <nav class="toc" aria-label="Contents">
+    <input id="filter" class="filter" type="search" placeholder="Filter commands…" autocomplete="off" aria-label="Filter commands">
+    <p class="toc-label">Contents</p>
+    <ol>
+      <li><a href="#start">How the bot works</a></li>
+      <li><a href="#war">War</a></li>
+      <li><a href="#clans">Players &amp; clans</a></li>
+      <li><a href="#linking">Account linking</a></li>
+      <li><a href="#server">Server setup</a></li>
+      <li><a href="#recruiting">Recruiting</a></li>
+      <li><a href="#scouting">Scouting</a></li>
+      <li><a href="#tips">Tips</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <p class="empty" id="empty">No commands match that search.</p>
+
+    <section id="start" data-info>
+      <h2>How the bot works</h2>
+      <p class="sec-intro">Every command is a Discord slash command — type <code>/</code> and pick it from the list. A few conventions apply everywhere.</p>
+
+      <p><strong>Tags or nicknames.</strong> Anywhere a clan tag is asked for, you can type the real tag (the <code>#</code> is optional, case doesn't matter) or a short server nickname set with <code>/nicklink</code>. Anywhere a player tag is asked for, you can instead @mention a Discord user and the bot uses their linked account.</p>
+      <p><strong>Permissions.</strong> Commands marked <span class="badge">privileged</span> are limited to roles chosen with <code>/editperms</code>. Until at least one privileged role is set, everyone can use every command.</p>
+      <p><strong>Per-server settings.</strong> Anything marked <span class="badge">per-server</span> — nicknames, reminders, roles, recruiting — is stored for that Discord server only. Account links are the exception: they're tied to your Discord account and work in any server.</p>
+      <p><strong>Interactive results.</strong> Commands marked <span class="badge">interactive</span> reply with menus or buttons — sorting dropdowns, a <strong>Download CSV</strong> button on tables, and so on.</p>
+
+      <article class="cmd" id="info" data-search="info about bot help overview">
+        <h3 class="sig"><span class="slash">/</span>info</h3>
+        <p>Posts a short overview of the bot inside Discord — what it does, quick tips, and a link back to this guide.</p>
+      </article>
+    </section>
+
+    <section id="war" data-commands>
+      <h2>War</h2>
+      <p class="sec-intro">Fame and decks used, war by war. New members are flagged, and members who left mid-war stay in the totals.</p>
+
+      <article class="cmd" id="currentwar" data-search="currentwar current war fame decks">
+        <h3 class="sig"><span class="slash">/</span>currentwar <span class="arg">&lt;clan&gt;</span><span class="badges"><span class="badge">interactive</span></span></h3>
+        <p>How the clan's current members are doing in the war happening right now.</p>
+        <table class="params">
+          <tr><td>clan</td><td>Required. Clan tag or a server nickname.</td></tr>
+        </table>
+        <ul class="notes">
+          <li>Sort by fame, name, decks, or tag, and reorder columns from the dropdowns.</li>
+          <li>Download CSV exports the full table.</li>
+        </ul>
+      </article>
+
+      <article class="cmd" id="lastwar" data-search="lastwar last war fame decks previous">
+        <h3 class="sig"><span class="slash">/</span>lastwar <span class="arg">&lt;clan&gt;</span><span class="badges"><span class="badge">interactive</span></span></h3>
+        <p>The same table for the most recently finished war.</p>
+        <table class="params">
+          <tr><td>clan</td><td>Required. Clan tag or a server nickname.</td></tr>
+        </table>
+      </article>
+
+      <article class="cmd" id="nthwar" data-search="nthwar n wars ago history weeks">
+        <h3 class="sig"><span class="slash">/</span>nthwar <span class="arg">&lt;clan&gt; &lt;n&gt;</span><span class="badges"><span class="badge">interactive</span></span></h3>
+        <p>War stats from a specific number of weeks ago. The bot remembers up to 10 wars.</p>
+        <table class="params">
+          <tr><td>clan</td><td>Required. Clan tag or a server nickname.</td></tr>
+          <tr><td>n</td><td>Required. How many wars ago, 1–10 (1 is last war). You can also change this from a dropdown after it posts.</td></tr>
+        </table>
+      </article>
+
+      <article class="cmd" id="stats" data-search="stats fame graph history trend prediction player">
+        <h3 class="sig"><span class="slash">/</span>stats <span class="arg">&lt;player&gt; &lt;from_war&gt; &lt;to_war&gt;</span></h3>
+        <p>A fame-history graph for one player over a range of wars, with average, median, high/low, a trend line, and a prediction for the next war.</p>
+        <table class="params">
+          <tr><td>player</td><td>Required. Player tag or an @mention of a linked user.</td></tr>
+          <tr><td>from_war</td><td>Required. The older end of the range, 1–10 weeks ago.</td></tr>
+          <tr><td>to_war</td><td>Required. The newer end, 1–10. Must be ≤ from_war (it's the more recent war).</td></tr>
+        </table>
+      </article>
+    </section>
+
+    <section id="clans" data-commands>
+      <h2>Players &amp; clans</h2>
+      <p class="sec-intro">Look up players, browse a roster, and get data-backed suggestions for who to promote or kick.</p>
+
+      <article class="cmd" id="player" data-search="player profile trophies cards ranked stats">
+        <h3 class="sig"><span class="slash">/</span>player <span class="arg">&lt;player&gt;</span></h3>
+        <p>A detailed profile: trophies, card levels, ranked results, war stats, and clan role.</p>
+        <table class="params">
+          <tr><td>player</td><td>Required. Player tag or an @mention of a linked user.</td></tr>
+        </table>
+      </article>
+
+      <article class="cmd" id="members" data-search="members roster new former list clan">
+        <h3 class="sig"><span class="slash">/</span>members <span class="arg">&lt;clan&gt;</span><span class="badges"><span class="badge">interactive</span></span></h3>
+        <p>The current roster with names, tags, and clan ranks.</p>
+        <table class="params">
+          <tr><td>clan</td><td>Required. Clan tag or a server nickname.</td></tr>
+        </table>
+        <ul class="notes">
+          <li>Toggle between all members, only new, only former, or everyone-but-new.</li>
+          <li>Sort and reorder columns, or download the CSV.</li>
+        </ul>
+      </article>
+
+      <article class="cmd" id="clan" data-search="clan members weeks joined average fame roster">
+        <h3 class="sig"><span class="slash">/</span>clan <span class="arg">&lt;clan&gt;</span><span class="badges"><span class="badge">interactive</span></span></h3>
+        <p>Every member with how many weeks ago they joined and their average fame — a quick read on tenure and consistency.</p>
+        <table class="params">
+          <tr><td>clan</td><td>Required. Clan tag or a server nickname.</td></tr>
+        </table>
+        <ul class="notes">
+          <li>Linked members are shown as @mentions. Average fame looks back up to 10 weeks.</li>
+        </ul>
+      </article>
+
+      <article class="cmd" id="viewlinks" data-search="viewlinks linked discord accounts members who">
+        <h3 class="sig"><span class="slash">/</span>viewlinks <span class="arg">&lt;clan&gt;</span></h3>
+        <p>Lists the clan's members, showing the linked Discord account for anyone who has one (and the in-game name for those who don't).</p>
+        <table class="params">
+          <tr><td>clan</td><td>Required. Clan tag or a server nickname.</td></tr>
+        </table>
+      </article>
+
+      <article class="cmd" id="rankings" data-search="rankings tournament scores rank tourny">
+        <h3 class="sig"><span class="slash">/</span>rankings <span class="arg">&lt;tournament&gt;</span><span class="badges"><span class="badge">interactive</span></span></h3>
+        <p>Tournament standings — every entrant's name, score, and rank.</p>
+        <table class="params">
+          <tr><td>tournament</td><td>Required. The tournament tag.</td></tr>
+        </table>
+      </article>
+
+      <div class="callout">
+        <p><strong>How scoring works.</strong> The two commands below rank members by a blend of fame (99.2%), fame trend over time (0.5%), and weeks in the clan (0.3%). Brand-new members aren't scored. Tap <strong>More Info on Scoring</strong> on the result, or pick any member for their fame graph.</p>
+      </div>
+
+      <article class="cmd" id="whotokick" data-search="whotokick kick remove recommendations worst inactive">
+        <h3 class="sig"><span class="slash">/</span>whotokick <span class="arg">&lt;clan&gt; [n] [exclude_leadership]</span><span class="badges"><span class="badge">interactive</span></span></h3>
+        <p>Suggests the lowest-scoring members as kick candidates — a starting point, not a verdict.</p>
+        <table class="params">
+          <tr><td>clan</td><td>Required. Clan tag or a server nickname.</td></tr>
+          <tr><td>n</td><td>Optional. How many to list, 1–24 (default 5).</td></tr>
+          <tr><td>exclude_leadership</td><td>Optional. Set True to skip Co-Leaders and Leaders (default False).</td></tr>
+        </table>
+      </article>
+
+      <article class="cmd" id="whotopromote" data-search="whotopromote promote elder coleader recommendations best">
+        <h3 class="sig"><span class="slash">/</span>whotopromote <span class="arg">&lt;clan&gt; [n] [exclude_leadership]</span><span class="badges"><span class="badge">interactive</span></span></h3>
+        <p>The flip side — the highest-scoring members who may have earned a promotion.</p>
+        <table class="params">
+          <tr><td>clan</td><td>Required. Clan tag or a server nickname.</td></tr>
+          <tr><td>n</td><td>Optional. How many to list, 1–24 (default 5).</td></tr>
+          <tr><td>exclude_leadership</td><td>Optional. Set True to skip existing leadership (default False).</td></tr>
+        </table>
+      </article>
+    </section>
+
+    <section id="linking" data-commands>
+      <h2>Account linking</h2>
+      <p class="sec-intro">Link your Clash Royale accounts to your Discord profile once, and every command that takes a player can use an @mention instead of a tag. Links work in any server.</p>
+
+      <article class="cmd" id="link" data-search="link manager main tag alt deckai id add remove accounts">
+        <h3 class="sig"><span class="slash">/</span>link <span class="arg">[user]</span><span class="badges"><span class="badge">interactive</span></span></h3>
+        <p>Opens the link manager — buttons to set your main tag, add alt accounts, attach DeckAI IDs, and remove accounts.</p>
+        <table class="params">
+          <tr><td>user</td><td>Optional. Manage someone else's links instead of your own (needs a privileged role).</td></tr>
+        </table>
+        <ul class="notes">
+          <li>Your first account is the main; you can add up to 20 accounts total.</li>
+          <li>A DeckAI ID is optional and only needed for <code>/spy_ai</code>.</li>
+        </ul>
+      </article>
+
+      <article class="cmd" id="profile" data-search="profile view linked tags accounts someone">
+        <h3 class="sig"><span class="slash">/</span>profile <span class="arg">[user]</span><span class="badges"><span class="badge">interactive</span></span></h3>
+        <p>Shows the Clash accounts linked to you (or someone you mention), with clan and trophies. Pick any account to open its full player profile.</p>
+        <table class="params">
+          <tr><td>user</td><td>Optional. View another user's linked accounts.</td></tr>
+        </table>
+      </article>
+
+      <article class="cmd" id="wipelinks" data-search="wipelinks remove delete tags unlink">
+        <h3 class="sig"><span class="slash">/</span>wipelinks <span class="arg">[user]</span><span class="badges"><span class="badge">privileged</span> <span class="badge">interactive</span></span></h3>
+        <p>Removes specific linked tags from an account via a select menu — useful for cleaning up someone else's stale links.</p>
+        <table class="params">
+          <tr><td>user</td><td>Optional. Whose links to remove (defaults to you).</td></tr>
+        </table>
+      </article>
+    </section>
+
+    <section id="server" data-commands>
+      <h2>Server setup</h2>
+      <p class="sec-intro">One-time configuration for your Discord server: nicknames, permissions, position roles, and automated war-day reminders.</p>
+
+      <article class="cmd" id="nicklink" data-search="nicklink nickname clan tag shortcut alias">
+        <h3 class="sig"><span class="slash">/</span>nicklink <span class="arg">&lt;clan&gt; [nickname]</span><span class="badges"><span class="badge">privileged</span> <span class="badge">per-server</span></span></h3>
+        <p>Gives a clan a short nickname you can type instead of its tag in any clan command.</p>
+        <table class="params">
+          <tr><td>clan</td><td>Required. The clan tag to nickname.</td></tr>
+          <tr><td>nickname</td><td>Optional. Under 5 characters. Leave it empty to delete the existing nickname.</td></tr>
+        </table>
+      </article>
+
+      <article class="cmd" id="viewnicks" data-search="viewnicks nicknames list clans server">
+        <h3 class="sig"><span class="slash">/</span>viewnicks<span class="badges"><span class="badge">per-server</span></span></h3>
+        <p>Lists every clan nickname set in this server, alphabetically. Anyone can use it.</p>
+      </article>
+
+      <article class="cmd" id="editperms" data-search="editperms privileged roles permissions who can">
+        <h3 class="sig"><span class="slash">/</span>editperms<span class="badges"><span class="badge">privileged</span> <span class="badge">per-server</span> <span class="badge">interactive</span></span></h3>
+        <p>Chooses which roles count as "privileged." Selecting a role toggles it in or out of the set.</p>
+        <div class="callout">
+          <p><strong>Warning:</strong> until you add at least one privileged role, all privileged commands are open to everyone. Set this up early.</p>
+        </div>
+      </article>
+
+      <article class="cmd" id="viewperms" data-search="viewperms privileged roles view see permissions">
+        <h3 class="sig"><span class="slash">/</span>viewperms<span class="badges"><span class="badge">per-server</span></span></h3>
+        <p>Shows the current privileged roles. Anyone can use it.</p>
+      </article>
+
+      <article class="cmd" id="editmemberroles" data-search="editmemberroles member elder coleader position roles map">
+        <h3 class="sig"><span class="slash">/</span>editmemberroles<span class="badges"><span class="badge">privileged</span> <span class="badge">per-server</span> <span class="badge">interactive</span></span></h3>
+        <p>Maps Discord roles to the in-game positions Member, Elder, and Co-Leader.</p>
+      </article>
+
+      <article class="cmd" id="viewmemberroles" data-search="viewmemberroles position roles view member elder coleader">
+        <h3 class="sig"><span class="slash">/</span>viewmemberroles<span class="badges"><span class="badge">per-server</span></span></h3>
+        <p>Shows which Discord role is mapped to each position. Anyone can use it.</p>
+      </article>
+
+      <article class="cmd" id="reminders" data-search="reminders war attack reminders schedule times timezone channel">
+        <h3 class="sig"><span class="slash">/</span>reminders <span class="arg">&lt;clan&gt;</span><span class="badges"><span class="badge">privileged</span> <span class="badge">per-server</span> <span class="badge">interactive</span></span></h3>
+        <p>Sets up automatic reminders that ping members who still have attacks left, on war days (Thursday–Sunday). Run it again to edit or delete.</p>
+        <table class="params">
+          <tr><td>clan</td><td>Required. Clan tag or a server nickname.</td></tr>
+        </table>
+        <p><strong>Setup walkthrough:</strong></p>
+        <ol class="steps">
+          <li><strong>Pick a channel.</strong><p>Where the reminders get posted. The bot needs View Channel and Send Messages there.</p></li>
+          <li><strong>Pick a timezone.</strong><p>Only used to show the reminder times in your local clock — the schedule itself is anchored to the war day.</p></li>
+          <li><strong>Pick one or more times.</strong><p>Choose hours within the war day (each runs 10:00 → 10:00 UTC). Reminders then fire automatically at those times on war days.</p></li>
+        </ol>
+        <ul class="notes">
+          <li>Running <code>/reminders</code> on an already-configured clan opens an edit menu: send one now, change times, change channel, or delete.</li>
+        </ul>
+      </article>
+    </section>
+
+    <section id="recruiting" data-commands>
+      <h2>Recruiting</h2>
+      <p class="sec-intro">Keeps a live "recruits needed" number for every clan in your family. The bot reads member counts itself; leaders are only pinged when a clan loses someone, and answer with one tap.</p>
+
+      <p><strong>One-time setup</strong> <span class="badge">privileged</span></p>
+      <ol class="steps">
+        <li><strong>Set a recruiting channel — <code>/setrecruitchannel #channel</code></strong><p>The bot opens one thread per clan here. It needs View Channel, Send Messages, Create Public Threads, and Send Messages in Threads in that channel (the command checks for you).</p></li>
+        <li><strong>Assign a manager per clan — <code>/setclanmanager &lt;clan&gt; @leader</code></strong><p>The person in charge of that clan. Assign more than one to share it; run it again on the same person to unassign.</p></li>
+      </ol>
+      <p>That's the whole setup. From here the number stays current on its own; the commands below are only for checking in or overriding.</p>
+
+      <div class="example">
+        <p class="example-label">When a clan loses a member, the bot posts in that clan's thread and mentions its managers:</p>
+        <div class="example-body">
+          <p><strong>1 member left Verdant</strong> — is the number below right?</p>
+          <p>Recruits needed: <strong>3</strong> &nbsp;·&nbsp; Members 47/50 &nbsp;·&nbsp; auto-tracked</p>
+          <p class="muted">Buttons: <code>Use suggested</code> <code>+1</code> <code>−1</code> <code>Set exact…</code> <code>We're full</code></p>
+        </div>
+      </div>
+      <p><strong>Use suggested</strong> keeps the clan on auto-tracking. The other buttons pin a number the bot won't overwrite — though it'll still check in if the clan loses more members. When someone joins, the number drops on its own with no ping. Buttons keep working even after the bot restarts.</p>
+
+      <article class="cmd" id="setrecruitchannel" data-search="setrecruitchannel recruiting channel thread setup">
+        <h3 class="sig"><span class="slash">/</span>setrecruitchannel <span class="arg">&lt;channel&gt;</span><span class="badges"><span class="badge">privileged</span> <span class="badge">per-server</span></span></h3>
+        <p>Picks the channel where the per-clan recruiting threads live. One-time.</p>
+        <table class="params">
+          <tr><td>channel</td><td>Required. A text channel the bot can post and create threads in.</td></tr>
+        </table>
+      </article>
+
+      <article class="cmd" id="setclanmanager" data-search="setclanmanager manager assign leader recruiting toggle">
+        <h3 class="sig"><span class="slash">/</span>setclanmanager <span class="arg">&lt;clan&gt; &lt;user&gt;</span><span class="badges"><span class="badge">privileged</span> <span class="badge">per-server</span></span></h3>
+        <p>Assigns — or unassigns, it toggles — who manages a clan's recruiting.</p>
+        <table class="params">
+          <tr><td>clan</td><td>Required. Clan tag or a server nickname.</td></tr>
+          <tr><td>user</td><td>Required. The member to assign or unassign. Assign several to share a clan.</td></tr>
+        </table>
+      </article>
+
+      <article class="cmd" id="viewclanmanagers" data-search="viewclanmanagers managers who recruiting list">
+        <h3 class="sig"><span class="slash">/</span>viewclanmanagers<span class="badges"><span class="badge">privileged</span> <span class="badge">per-server</span></span></h3>
+        <p>Lists who manages recruiting for each clan, and warns if the recruiting channel isn't set yet.</p>
+      </article>
+
+      <article class="cmd" id="editneeds" data-search="editneeds pin recruits needed number set clear">
+        <h3 class="sig"><span class="slash">/</span>editneeds <span class="arg">&lt;clan&gt; &lt;number&gt;</span><span class="badges"><span class="badge">privileged</span> <span class="badge">per-server</span></span></h3>
+        <p>Pins a recruits-needed number by hand — for "I'm about to kick three, list us for three more."</p>
+        <table class="params">
+          <tr><td>clan</td><td>Required. Clan tag or a server nickname.</td></tr>
+          <tr><td>number</td><td>Required. Recruits needed, 0–50. 0 clears the clan from the list.</td></tr>
+        </table>
+        <ul class="notes">
+          <li>A pinned number isn't auto-overwritten. Tap <strong>Use suggested</strong> on a prompt to hand it back to auto-tracking.</li>
+        </ul>
+      </article>
+
+      <article class="cmd" id="viewneeds" data-search="viewneeds recruits needed clans overview recruiter">
+        <h3 class="sig"><span class="slash">/</span>viewneeds<span class="badges"><span class="badge">privileged</span> <span class="badge">per-server</span></span></h3>
+        <p>Every clan that needs recruits, most-needed first, with current member counts — the recruiter's overview.</p>
+      </article>
+    </section>
+
+    <section id="scouting" data-commands>
+      <h2>Scouting</h2>
+      <p class="sec-intro">Deck-level scouting for war duels, powered by DeckAI.</p>
+
+      <article class="cmd" id="spy_ai" data-search="spy_ai spy scout opponent war decks duel winrate deckai">
+        <h3 class="sig"><span class="slash">/</span>spy_ai <span class="arg">&lt;opponent&gt; [someone_else]</span><span class="badges"><span class="badge">interactive</span></span></h3>
+        <p>Scouts an opponent's available war-duel decks, shows your win rate against each, and — as the duel plays out — suggests your best remaining deck for the next match.</p>
+        <table class="params">
+          <tr><td>opponent</td><td>Required. The player tag of who you're dueling.</td></tr>
+          <tr><td>someone_else</td><td>Optional. @mention the person actually dueling, if it isn't you.</td></tr>
+        </table>
+        <ul class="notes">
+          <li>Requires a DeckAI ID on the dueling player's account — add one in <code>/link</code>.</li>
+          <li>After each match, tell the bot which decks were played and it recommends your next pick.</li>
+        </ul>
+      </article>
+
+      <div class="callout">
+        <p>Looking for the fame-history graph? That's <a href="#stats"><code>/stats</code></a> in the War section.</p>
+      </div>
+    </section>
+
+    <section id="tips" data-info>
+      <h2>Tips</h2>
+      <p><strong>Tags are forgiving.</strong> The <code>#</code> is optional and capitalization doesn't matter. If you keep typing the same tag, give it a nickname with <code>/nicklink</code>.</p>
+      <p><strong>@mentions stand in for tags.</strong> On player commands, mention a linked user instead of hunting down their tag.</p>
+      <p><strong>Every table exports.</strong> War, member, clan, and ranking tables all have a Download CSV button.</p>
+      <p><strong>Markers.</strong> A "new member" badge means they joined after the last war ended; a "former member" marker means they've since left but still logged war activity.</p>
+      <p><strong>Questions or bugs?</strong> Contact the developer, <strong>@adiar</strong>, on Discord.</p>
+    </section>
+  </main>
+</div>
+
+<footer>
+  <div class="wrap">
+    <p>Clash Royale clan-management bot — command reference.</p>
+    <p>This content is not affiliated with, endorsed, or sponsored by Supercell. See Supercell's <a href="https://supercell.com/en/fan-content-policy/" target="_blank" rel="noopener">Fan Content Policy</a>.</p>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var input = document.getElementById("filter");
+    var cards = Array.prototype.slice.call(document.querySelectorAll(".cmd[data-search]"));
+    var sections = Array.prototype.slice.call(document.querySelectorAll("section"));
+    var empty = document.getElementById("empty");
+
+    input.addEventListener("input", function () {
+      var q = input.value.trim().toLowerCase();
+      var searching = q.length > 0;
+      var anyVisible = false;
+
+      cards.forEach(function (c) {
+        var hit = !searching || c.getAttribute("data-search").indexOf(q) !== -1
+          || c.textContent.toLowerCase().indexOf(q) !== -1;
+        c.style.display = hit ? "" : "none";
+        if (hit) anyVisible = true;
+      });
+
+      sections.forEach(function (s) {
+        if (!searching) { s.style.display = ""; return; }
+        if (s.hasAttribute("data-info")) { s.style.display = "none"; return; }
+        var visible = s.querySelector(".cmd[data-search]:not([style*='none'])");
+        s.style.display = visible ? "" : "none";
+      });
+
+      empty.style.display = searching && !anyVisible ? "block" : "none";
+    });
+  })();
+</script>
+
+</body>
+</html>

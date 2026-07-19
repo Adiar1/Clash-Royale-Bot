@@ -1,12 +1,15 @@
+import hmac
 import os
+import secrets
 import sqlite3
 import subprocess
 import sys
+import time
 from functools import wraps
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, flash, redirect, render_template, request, send_file, session, url_for
+from flask import Flask, abort, flash, redirect, render_template, request, send_file, session, url_for
 
 
 # ---- Resolve repo root regardless of where the app is launched ----
@@ -44,6 +47,13 @@ SECRET_KEY = os.getenv("FLASK_SECRET_KEY") or os.getenv("SECRET_KEY")
 if not SECRET_KEY:
     raise RuntimeError("FLASK_SECRET_KEY must be set to run the control panel.")
 
+# The panel exposes the .env editor, file browser, and restart controls, so a
+# missing/empty password must be a startup error — with an empty ADMIN_PASSWORD
+# an empty login form would authenticate.
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+if not ADMIN_PASSWORD:
+    raise RuntimeError("ADMIN_PASSWORD must be set (non-empty) to run the control panel.")
+
 # Always register the static folder (even if it isn't present at startup).
 # Passing None here leaves the 'static' endpoint unregistered, and base.html's
 # `url_for('static', ...)` then raises BuildError on EVERY page — which is what
@@ -52,6 +62,22 @@ if not SECRET_KEY:
 app = Flask(__name__, template_folder=str(TEMPLATES_DIR),
             static_folder=str(STATIC_DIR), static_url_path="/static")
 app.secret_key = SECRET_KEY
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    # Lax stops other sites from riding the admin session on cross-site POSTs.
+    SESSION_COOKIE_SAMESITE="Lax",
+    # Only mark the cookie Secure when the panel is actually behind HTTPS,
+    # otherwise the browser would drop it and logins over plain HTTP break.
+    SESSION_COOKIE_SECURE=os.getenv("PANEL_HTTPS", "").lower() in ("1", "true", "yes"),
+)
+
+
+@app.after_request
+def _security_headers(response):
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    return response
 
 # When BOT_SERVICE is set (e.g. "crbot.service"), the panel manages the bot
 # through systemd instead of spawning it as a child process. That gives the bot
@@ -124,19 +150,70 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not session.get('logged_in'):
-            return redirect(url_for('login', next=request.url))
+            return redirect(url_for('login', next=request.full_path))
         return f(*args, **kwargs)
 
     return decorated_function
 
 
+# ---- CSRF: every POST must echo the per-session token ----
+def csrf_token() -> str:
+    token = session.get('_csrf')
+    if not token:
+        token = secrets.token_hex(16)
+        session['_csrf'] = token
+    return token
+
+
+app.jinja_env.globals['csrf_token'] = csrf_token
+
+
+@app.before_request
+def _verify_csrf():
+    if request.method == 'POST':
+        expected = session.get('_csrf')
+        sent = request.form.get('csrf_token', '')
+        # compare_digest on str raises TypeError for non-ASCII; bytes never do
+        if not expected or not hmac.compare_digest(sent.encode(), expected.encode()):
+            abort(400, description="Missing or invalid CSRF token. Reload the page and try again.")
+
+
+# ---- Login rate limiting: 5 failures per IP locks login for 15 minutes ----
+LOGIN_MAX_FAILURES = 5
+LOGIN_WINDOW_SECONDS = 15 * 60
+_login_failures: dict[str, list[float]] = {}
+
+
+def _login_locked(ip: str) -> bool:
+    now = time.time()
+    recent = [t for t in _login_failures.get(ip, []) if now - t < LOGIN_WINDOW_SECONDS]
+    if recent:
+        _login_failures[ip] = recent
+    else:
+        _login_failures.pop(ip, None)
+    return len(recent) >= LOGIN_MAX_FAILURES
+
+
+def _safe_next(target: str | None) -> str | None:
+    """Only follow relative in-app paths after login, never external URLs."""
+    if target and target.startswith('/') and not target.startswith('//'):
+        return target
+    return None
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
+        ip = request.remote_addr or "unknown"
+        if _login_locked(ip):
+            flash('Too many failed attempts. Try again in 15 minutes.', 'error')
+            return redirect(url_for('login', next=request.args.get('next')))
         password = request.form.get('password', '')
-        if password == os.getenv('ADMIN_PASSWORD'):
+        if hmac.compare_digest(password.encode(), ADMIN_PASSWORD.encode()):
+            _login_failures.pop(ip, None)
             session['logged_in'] = True
-            return redirect(request.args.get('next') or url_for('index'))
+            return redirect(_safe_next(request.args.get('next')) or url_for('index'))
+        _login_failures.setdefault(ip, []).append(time.time())
         flash('Invalid password.', 'error')
         return redirect(url_for('login', next=request.args.get('next')))
     return render_template('login.html')
@@ -150,16 +227,17 @@ def logout():
 
 
 # ---------- Public command guide (no login required) ----------
-GUIDE_FILE = STATIC_DIR / "guide.html"
+# The canonical guide lives in docs/ and is hosted by GitHub Pages. When
+# GUIDE_URL points there, /guide redirects so old ip:port/guide links keep
+# working; without GUIDE_URL the panel serves the file itself as a fallback.
+GUIDE_FILE = BOT_DIR / "docs" / "index.html"
+GUIDE_URL = os.getenv("GUIDE_URL")
 
 
 @app.route('/guide')
 def command_guide():
-    """The user-facing command guide, served publicly so anyone can read it.
-
-    Point the bot's GUIDE_URL at this route (e.g. https://your-host/guide) so
-    /info links here.
-    """
+    if GUIDE_URL:
+        return redirect(GUIDE_URL)
     if not GUIDE_FILE.exists():
         return "Command guide is not available.", 404
     return send_file(GUIDE_FILE)
@@ -406,9 +484,10 @@ def file_viewer():
         return items
 
     rel = request.args.get("dir", "")
-    # Normalize & prevent path traversal
+    # Normalize & prevent path traversal. is_relative_to (not a string-prefix
+    # check) so a sibling like /opt/Clash-Royale-Bot-evil can't slip through.
     full_path = (BOT_DIR / rel).resolve()
-    if not str(full_path).startswith(str(BOT_DIR.resolve())):
+    if not full_path.is_relative_to(BOT_DIR.resolve()):
         flash('Invalid path.', 'error')
         return redirect(url_for('file_viewer'))
 
@@ -468,4 +547,7 @@ def view_database():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.getenv("PORT", "5000")))
+    # Once the guide is hosted elsewhere the panel has no public-facing routes
+    # left — set PANEL_HOST=127.0.0.1 and reach it over an SSH tunnel
+    # (ssh -L 5000:localhost:5000 user@host) instead of the open internet.
+    app.run(host=os.getenv("PANEL_HOST", "0.0.0.0"), port=int(os.getenv("PORT", "5000")))

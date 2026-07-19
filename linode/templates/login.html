@@ -5,6 +5,7 @@
     <div class="card login-card">
         <h1>Control Panel Login</h1>
         <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="field">
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" placeholder="Enter password"
