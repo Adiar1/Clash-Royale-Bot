@@ -59,11 +59,38 @@ app.secret_key = SECRET_KEY
 # orphaning bot processes. When unset, the panel falls back to the original
 # subprocess behavior (handy for local/dev runs without systemd).
 BOT_SERVICE = os.getenv("BOT_SERVICE")
+# The panel's own systemd unit, so "Update & restart" can reload panel code too.
+PANEL_SERVICE = os.getenv("PANEL_SERVICE", "crpanel.service")
 BOT_PROCESS = None  # only used in subprocess (non-systemd) mode
 
 
 def _systemctl(*args):
     return subprocess.run(["systemctl", *args], capture_output=True, text=True)
+
+
+def _schedule_panel_restart(delay_seconds: int = 5) -> bool:
+    """Reload the panel itself shortly after the current response is sent.
+
+    A process can't cleanly ``systemctl restart`` itself inline — systemd would
+    kill it mid-request and the browser would just see a dropped connection.
+    ``systemd-run`` schedules the restart on a *detached* transient timer, so
+    this request returns first and the panel then comes back running the freshly
+    pulled ``control_panel.py``. The login session survives it (the secret key
+    is stable).
+
+    Only applies under systemd (BOT_SERVICE set); returns True if scheduled.
+    """
+    if not BOT_SERVICE:
+        return False  # dev/subprocess mode: the panel isn't a managed service
+    try:
+        subprocess.Popen(
+            ["systemd-run", f"--on-active={delay_seconds}", "--collect",
+             "systemctl", "restart", PANEL_SERVICE]
+        )
+        return True
+    except (OSError, subprocess.SubprocessError):
+        app.logger.exception("Could not schedule control panel self-restart")
+        return False
 
 
 def bot_is_running() -> bool:
@@ -308,12 +335,19 @@ def update_and_restart():
             _terminate_bot()
             _spawn_bot()
 
+        # Also reload the panel itself so pulled changes to control_panel.py,
+        # templates, or static files (e.g. the command guide) take effect —
+        # deferred so this request can return before the panel is replaced.
+        panel_restarting = _schedule_panel_restart()
+
         # Check if anything was updated
         if "Already up to date" in pull_result.stdout or "Already up-to-date" in pull_result.stdout:
-            message = "Bot was already on the newest version but has been restarted."
+            message = "Already on the newest version — everything restarted anyway."
         else:
-            message = "Bot updated and restarted successfully."
+            message = "Updated and restarted successfully."
 
+        if panel_restarting:
+            message += " The control panel is reloading too — give it a few seconds, then refresh this page."
         if stashed:
             message += " Local changes were preserved."
 
